@@ -28,6 +28,14 @@ export class ReadyEvent extends Listener {
 			if (!client.schedule.queue.some((task) => task.taskID === 'checkAutoPins')) {
 				await client.schedule.add('checkAutoPins', '* * * * *');
 			}
+
+			if (!client.schedule.queue.some((task) => task.taskID === 'checkRolesToRemove')) {
+				await client.schedule.add('checkRolesToRemove', '* * * * *');
+			}
+
+			if (!client.schedule.queue.some((task) => task.taskID === 'checkPendingKickResets')) {
+				await client.schedule.add('checkPendingKickResets', '* * * * *');
+			}
 		} catch (error) {
 			client.emit('wtf', error);
 		}

@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:../data/bot_data.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Schedule {
@@ -45,4 +45,38 @@ model AutoPin {
   last_message_id     String?
 
   @@map("auto_pins")
+}
+
+// VOTE KICK //
+
+model VoteKick {
+  id                           String   @id @default(uuid()) @db.Uuid
+  // Vote created at
+  created_at                   DateTime @default(now())
+  // User who is getting voted out
+  user_to_kick                 String
+  // User who started the vote
+  started_by                   String
+  // Users who agree with the vote
+  voters_agreeing_with_kick    String[]
+  // Users who disagree with the vote
+  voters_disagreeing_with_kick String[]
+  // Message to original vote kick
+  message_url                  String
+  // Channel in which the vote was started
+  voice_channel_id             String
+
+  @@map("vote_kick")
+}
+
+model User {
+  id             String    @id @unique
+  // Amount of kicks in the past 6 hours
+  kicks          Int
+  // When to remove the blocked role from the user
+  remove_role_at DateTime?
+  // When to reset the kick counter
+  reset_kicks_at DateTime?
+
+  @@map("user")
 }

@@ -27,8 +27,10 @@ const client = new UtilsBot({
 		Intents.FLAGS.GUILD_MEMBERS,
 		Intents.FLAGS.GUILD_BANS,
 		Intents.FLAGS.GUILD_MESSAGES,
+		Intents.FLAGS.GUILD_VOICE_STATES,
 	]),
 	caseInsensitiveCommands: true,
+	loadMessageCommandListeners: !Reflect.has(process.env, 'PM2_HOME'),
 	logger: {
 		depth: 2,
 		level: Reflect.has(process.env, 'PM2_HOME') ? LogLevel.Info : LogLevel.Debug,
@@ -44,7 +46,7 @@ const client = new UtilsBot({
 		},
 		GuildMemberManager: {
 			maxSize: 100,
-			keepOverLimit: (member) => member.user.id === member.client.user!.id,
+			keepOverLimit: (member) => member.user.id === member.client.user!.id || Boolean(member.voice.channelId),
 		},
 		// Useless props for the bot
 		GuildEmojiManager: { maxSize: 0 },
@@ -54,8 +56,8 @@ const client = new UtilsBot({
 		// Members, users and messages are needed for the bot to function
 		guildMembers: {
 			interval: Time.Minute * 15,
-			// Sweep all members except the bot member
-			filter: () => (member) => member.user.id !== member.client.user!.id,
+			// Sweep all members except the bot member and members in voice channels
+			filter: () => (member) => member.user.id !== member.client.user!.id || Boolean(member.voice.channelId),
 		},
 		users: {
 			interval: Time.Minute * 15,
