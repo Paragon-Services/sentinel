@@ -94,7 +94,7 @@ export class MediaOnlyMessagesCommand extends Subcommand {
 			where: { guild_id: interaction.guildId },
 		});
 
-		if (!channels.length) {
+		if (channels.length === 0) {
 			await interaction.reply({
 				ephemeral: true,
 				embeds: [createInfoEmbed('No channels are configured to require attachments when sending messages')],

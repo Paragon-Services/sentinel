@@ -23,6 +23,10 @@ export class ReadyEvent extends Listener {
 
 		try {
 			await client.schedule.init();
+
+			if (!client.schedule.queue.some((task) => task.taskID === 'checkAutoPins')) {
+				await client.schedule.add('checkAutoPins', '* * * * *');
+			}
 		} catch (error) {
 			client.emit('wtf', error);
 		}

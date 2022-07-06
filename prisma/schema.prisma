@@ -34,3 +34,15 @@ model SharedGuildBan {
 
   @@map("shared_guild_bans")
 }
+
+model AutoPin {
+  id                  String   @id @default(cuid())
+  content             String
+  channel_id          String
+  guild_id            String
+  check_every_seconds BigInt
+  last_check          DateTime
+  last_message_id     String?
+
+  @@map("auto_pins")
+}

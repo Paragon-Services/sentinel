@@ -19,7 +19,7 @@ export class CheckBanOnJoin extends Listener {
 		this.container.logger.info(`Checking if user ${member.user.tag} (${member.user.id}) has been banned before...`);
 
 		const me = await guild.members.fetch({ user: this.container.client.user!.id });
-		if (!me.permissions.has(PermissionFlagsBits.BanMembers)) {
+		if (!me.permissions.has(PermissionFlagsBits.BanMembers, true)) {
 			this.container.logger.warn(
 				`  Can't apply bans in guild ${guild.name} (${guild.id}) because I don't have the Ban Members permission!`,
 			);

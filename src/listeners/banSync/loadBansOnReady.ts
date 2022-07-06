@@ -25,7 +25,7 @@ export class LoadBansOnReady extends Listener {
 			}
 
 			const me = await guild.members.fetch({ user: this.container.client.user!.id });
-			if (!me.permissions.has(PermissionFlagsBits.BanMembers)) {
+			if (!me.permissions.has(PermissionFlagsBits.BanMembers, true)) {
 				this.container.logger.warn(
 					`  Can't fetch bans from guild ${guild.name} (${guildId}) because I don't have the Ban Members permission!`,
 				);
@@ -91,7 +91,7 @@ export class LoadBansOnReady extends Listener {
 			}
 
 			const me = await guild.members.fetch({ user: this.container.client.user!.id });
-			if (!me.permissions.has(PermissionFlagsBits.BanMembers)) {
+			if (!me.permissions.has(PermissionFlagsBits.BanMembers, true)) {
 				this.container.logger.warn(
 					`  Can't ensure bans are synced in guild ${guild.name} (${guildId}) because I don't have the Ban Members permission!`,
 				);

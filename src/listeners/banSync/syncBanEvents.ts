@@ -150,7 +150,7 @@ async function* getUsableGuilds() {
 		}
 
 		const me = await guild.members.fetch({ user: container.client.user!.id });
-		if (!me.permissions.has(PermissionFlagsBits.BanMembers)) {
+		if (!me.permissions.has(PermissionFlagsBits.BanMembers, true)) {
 			container.logger.warn(
 				`  Can't apply bans/unbans in guild ${guild.name} (${guildId}) because I don't have the Ban Members permission!`,
 			);

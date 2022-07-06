@@ -6,6 +6,6 @@
 		"composite": true,
 		"resolveJsonModule": true
 	},
-	"include": [".", "./**/*.json"],
+	"include": [".", "./**/*.json", "../test.mjs"],
 	"exclude": ["./tsconfig.json"]
 }
