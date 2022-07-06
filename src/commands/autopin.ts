@@ -36,7 +36,7 @@ export class AutoPin extends Subcommand {
 
 	public async createSubcommand(interaction: Subcommand.ChatInputInteraction<'cached'>) {
 		const channel = interaction.options.getChannel('channel', true) as GuildTextBasedChannel;
-		const content = interaction.options.getString('content', true);
+		const content = interaction.options.getString('content', true).replaceAll('{newline}', '\n');
 		const rawCheckEvery = interaction.options.getString('check_every', true);
 
 		const me = await interaction.guild.members.fetch(this.container.client.user!.id);
@@ -209,7 +209,10 @@ export class AutoPin extends Subcommand {
 								),
 						)
 						.addStringOption((content) =>
-							content.setName('content').setDescription('The message to send in the channel').setRequired(true),
+							content
+								.setName('content')
+								.setDescription('The message to send in the channel (for now use {newline} for new lines)')
+								.setRequired(true),
 						)
 						.addStringOption((checkEvery) =>
 							checkEvery
