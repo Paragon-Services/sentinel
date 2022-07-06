@@ -40,6 +40,7 @@ export class LoadBansOnReady extends Listener {
 						await guild.bans.fetch({
 							limit: 1000,
 							after,
+							cache: false,
 						})
 					).values(),
 				].sort((a, b) => Number(BigInt(a.user.id) - BigInt(b.user.id)));
