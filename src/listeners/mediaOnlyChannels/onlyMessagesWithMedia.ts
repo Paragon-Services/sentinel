@@ -3,6 +3,7 @@ import { Events, Listener } from '@sapphire/framework';
 import { Time } from '@sapphire/time-utilities';
 import type { Message } from 'discord.js';
 import { setTimeout } from 'node:timers/promises';
+import { isMediaOnlyChannel } from '../../lib/utils/caches/mediaOnlyCache.js';
 
 @ApplyOptions<Listener.Options>({
 	event: Events.MessageCreate,
@@ -14,9 +15,7 @@ export class MessagesWithMedia extends Listener {
 			return;
 		}
 
-		const isMessageOnlyChannelEnabled = await this.container.prisma.messageOnlyChannel.findFirst({
-			where: { channel_id: message.channelId },
-		});
+		const isMessageOnlyChannelEnabled = isMediaOnlyChannel(message.channelId);
 
 		if (!isMessageOnlyChannelEnabled) {
 			return;

@@ -1,6 +1,7 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Subcommand, SubcommandMappingArray } from '@sapphire/plugin-subcommands';
 import { PermissionFlagsBits } from 'discord-api-types/v10';
+import { addMediaOnlyChannel, removeMediaOnlyChannel } from '../lib/utils/caches/mediaOnlyCache.js';
 import { createInfoEmbed } from '../lib/utils/createInfoEmbed.js';
 
 @ApplyOptions<Subcommand.Options>({
@@ -45,9 +46,7 @@ export class MediaOnlyMessagesCommand extends Subcommand {
 			return;
 		}
 
-		await this.container.prisma.messageOnlyChannel.create({
-			data: { channel_id: channel.id, guild_id: interaction.guildId },
-		});
+		await addMediaOnlyChannel(channel.id, channel.guildId);
 
 		await interaction.reply({
 			embeds: [
@@ -76,9 +75,7 @@ export class MediaOnlyMessagesCommand extends Subcommand {
 			return;
 		}
 
-		await this.container.prisma.messageOnlyChannel.delete({
-			where: { channel_id: channel.id },
-		});
+		await removeMediaOnlyChannel(channel.id);
 
 		await interaction.reply({
 			embeds: [

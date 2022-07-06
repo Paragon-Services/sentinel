@@ -2,6 +2,7 @@ import { ApplyOptions } from '@sapphire/decorators';
 import { Listener, ListenerOptions } from '@sapphire/framework';
 import { cyanBright, green, magenta } from 'colorette';
 import { PermissionFlagsBits } from 'discord-api-types/v10';
+import { loadMediaOnlyChannels } from '../lib/utils/caches/mediaOnlyCache.js';
 
 @ApplyOptions<ListenerOptions>({
 	once: true,
@@ -30,5 +31,7 @@ export class ReadyEvent extends Listener {
 		} catch (error) {
 			client.emit('wtf', error);
 		}
+
+		await loadMediaOnlyChannels();
 	}
 }
