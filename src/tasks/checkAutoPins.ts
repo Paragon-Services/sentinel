@@ -1,3 +1,4 @@
+import { PermissionFlagsBits } from 'discord-api-types/v10';
 import type { GuildTextBasedChannel, Message } from 'discord.js';
 import { Task } from '../lib/schedule/tasks/Task.js';
 
@@ -19,6 +20,15 @@ export class CheckAutoPins extends Task {
 				continue;
 			}
 
+			const me = await channel.guild.members.fetch(this.container.client.user!.id);
+
+			if (!channel.permissionsFor(me).has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages], true)) {
+				this.container.logger.warn(
+					`I don't have permissions to view channel / send messages in ${channel.name} (${channel.id}) in guild ${channel.guild.name} (${channel.guild.id})`,
+				);
+				continue;
+			}
+
 			let msg: Message | undefined;
 
 			try {
@@ -27,7 +37,7 @@ export class CheckAutoPins extends Task {
 				msg = lastMessages.first();
 			} catch (err) {
 				this.container.logger.warn(
-					`Failed to fetch messages for autopin ${autoPin.id} in channel ${channel.name} (${channel.id})`,
+					`Failed to fetch messages for autopin ${autoPin.id} in channel ${channel.name} (${channel.id}) for guild ${channel.guild.name} (${channel.guild.id})`,
 					err,
 				);
 				continue;
@@ -65,7 +75,9 @@ export class CheckAutoPins extends Task {
 				where: { id: autoPin.id },
 			});
 
-			this.container.logger.info(`Successfully autopinned ${autoPin.id} (new message id: ${newMessage.id})`);
+			this.container.logger.info(
+				`Successfully autopinned ${autoPin.id} (new message id: ${newMessage.id}) for channel ${channel.name} (${channel.id}) in guild ${channel.guild.name} (${channel.guild.id})`,
+			);
 		}
 
 		return null;
