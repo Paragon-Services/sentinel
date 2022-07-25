@@ -5,6 +5,8 @@ import { CommandInteraction, MessageActionRow, MessageButton, MessageEmbed, User
 import { getMessageUrlFromInteractionResponse, toReadableUser } from '../utils.js';
 
 export async function createVoteKick(interaction: CommandInteraction, userToKick: User, voiceChannel: VoiceChannel) {
+	const reason = interaction.options.getString('reason', true);
+
 	const data: Prisma.VoteKickCreateInput = {
 		user_to_kick: userToKick.id,
 		started_by: interaction.user.id,
@@ -12,6 +14,7 @@ export async function createVoteKick(interaction: CommandInteraction, userToKick
 		voters_disagreeing_with_kick: [userToKick.id],
 		message_url: '',
 		voice_channel_id: voiceChannel.id,
+		reason,
 	};
 
 	const membersInVoiceChannel = voiceChannel.members.size;
@@ -33,7 +36,7 @@ export async function createVoteKick(interaction: CommandInteraction, userToKick
 		embeds: [
 			new MessageEmbed() //
 				.setColor('BLURPLE')
-				.setDescription(`A vote to kick **${toReadableUser(userToKick)}** was started!`)
+				.setDescription(`A vote to kick **${toReadableUser(userToKick)}** was started!\n\nReason: ${reason}`)
 				.addFields(
 					{ name: 'Members agreeing with vote', value: '1', inline: true },
 					{ name: 'Members disagreeing with vote', value: '1', inline: true },

@@ -111,8 +111,12 @@ export class HandleVoteResult extends Task {
 						[
 							`The vote to kick **${await fetchReadableUser(vote.user_to_kick)}** ended!`,
 							'',
+							vote.reason ? `Reason: ${vote.reason}` : undefined,
+							vote.reason ? '' : undefined,
 							`The result is: **${actionToResult[action]}**!`,
-						].join('\n'),
+						]
+							.filter((t) => t !== undefined)
+							.join('\n'),
 					)
 					.setFields(
 						{ name: 'Members agreeing with vote', value: String(vote.voters_agreeing_with_kick.length), inline: true },
@@ -177,6 +181,7 @@ export class HandleVoteResult extends Task {
 						[
 							`Vote started by: **${await fetchReadableUser(vote.started_by)}**`,
 							`Vote started for: **${await fetchReadableUser(vote.user_to_kick)}**`,
+							`Reason: ${vote.reason ?? 'old vote before reason was required'}`,
 							// `Total votes: **${
 							// 	vote.voters_agreeing_with_kick.length + vote.voters_disagreeing_with_kick.length
 							// }**`,

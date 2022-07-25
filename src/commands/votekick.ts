@@ -364,6 +364,12 @@ export class VoteKick extends Command {
 						.setDescription('The user who you wish to start a vote for')
 						.setRequired(true),
 				)
+				.addStringOption((reason) =>
+					reason //
+						.setName('reason')
+						.setDescription('The reason for the vote kick')
+						.setRequired(true),
+				)
 				.setDMPermission(false),
 		);
 	}

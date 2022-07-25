@@ -4,6 +4,8 @@ import { Events, Listener } from '@sapphire/framework';
 import { PermissionFlagsBits } from 'discord-api-types/v10';
 import { useGuildIdsToSyncBansIn } from '../../lib/utils/hooks/useGuildIdsToSyncBansIn.js';
 
+const header = '[BAN SYNC] ';
+
 @ApplyOptions<Listener.Options>({
 	event: Events.ClientReady,
 })
@@ -13,21 +15,21 @@ export class LoadBansOnReady extends Listener {
 
 		const banList = new Map<string, SharedGuildBan>();
 
-		this.container.logger.info('Fetching all bans for the provided guilds, this might take a while...');
+		this.container.logger.info(`${header}Fetching all bans for the provided guilds, this might take a while...`);
 
 		// Fetch all bans from guilds
 		for (const guildId of guildIds) {
 			const guild = this.container.client.guilds.resolve(guildId);
 
 			if (!guild) {
-				this.container.logger.warn(`  Couldn't find guild ${guildId} to sync bans with!`);
+				this.container.logger.warn(`${header}  Couldn't find guild ${guildId} to sync bans with!`);
 				continue;
 			}
 
 			const me = await guild.members.fetch({ user: this.container.client.user!.id });
 			if (!me.permissions.has(PermissionFlagsBits.BanMembers, true)) {
 				this.container.logger.warn(
-					`  Can't fetch bans from guild ${guild.name} (${guildId}) because I don't have the Ban Members permission!`,
+					`${header}  Can't fetch bans from guild ${guild.name} (${guildId}) because I don't have the Ban Members permission!`,
 				);
 				continue;
 			}
@@ -63,7 +65,7 @@ export class LoadBansOnReady extends Listener {
 				}
 
 				if (banChunk.length < 1000) {
-					this.container.logger.info(`  Fetched all bans for guild ${guild.name} (${guild.id})`);
+					this.container.logger.info(`${header}  Fetched all bans for guild ${guild.name} (${guild.id})`);
 					break;
 				}
 			}
@@ -73,7 +75,7 @@ export class LoadBansOnReady extends Listener {
 		await this.container.prisma.sharedGuildBan.deleteMany();
 
 		// Insert all bans
-		this.container.logger.info(`Saving ${banList.size} bans to the database`);
+		this.container.logger.info(`${header}Saving ${banList.size} bans to the database`);
 
 		for (const ban of banList.values()) {
 			await this.container.prisma.sharedGuildBan.create({
@@ -81,27 +83,27 @@ export class LoadBansOnReady extends Listener {
 			});
 		}
 
-		this.container.logger.info('Saved bans to the database. Now checking if any bans have not been synced...');
+		this.container.logger.info(`${header}Saved bans to the database. Now checking if any bans have not been synced...`);
 
 		for (const guildId of guildIds) {
 			const guild = this.container.client.guilds.resolve(guildId);
 
 			if (!guild) {
-				this.container.logger.warn(`  Couldn't find guild ${guildId} to sync bans with!`);
+				this.container.logger.warn(`${header}  Couldn't find guild ${guildId} to sync bans with!`);
 				continue;
 			}
 
 			const me = await guild.members.fetch({ user: this.container.client.user!.id });
 			if (!me.permissions.has(PermissionFlagsBits.BanMembers, true)) {
 				this.container.logger.warn(
-					`  Can't ensure bans are synced in guild ${guild.name} (${guildId}) because I don't have the Ban Members permission!`,
+					`${header}  Can't ensure bans are synced in guild ${guild.name} (${guildId}) because I don't have the Ban Members permission!`,
 				);
 				continue;
 			}
 
 			// Fetch all guild members
 			this.container.logger.info(
-				`  Fetching all members of guild ${guild.name} (${guild.id}) - this might take a while...`,
+				`${header}  Fetching all members of guild ${guild.name} (${guild.id}) - this might take a while...`,
 			);
 			const members = await guild.members.fetch();
 
@@ -111,7 +113,7 @@ export class LoadBansOnReady extends Listener {
 				if (ban) {
 					if (!member.bannable) {
 						this.container.logger.warn(
-							`    Couldn't ban user ${member.user.tag} (${member.user.id}) in guild ${guild.name} (${
+							`${header}    Couldn't ban user ${member.user.tag} (${member.user.id}) in guild ${guild.name} (${
 								guild.id
 							}) because they are above me (previously banned for: ${ban.reason ?? 'no reason'})`,
 						);
@@ -122,7 +124,7 @@ export class LoadBansOnReady extends Listener {
 
 					// Member is present in guild but should be banned... bye felicia
 					this.container.logger.info(
-						`    Banning user ${member.user.tag} (${id}) from guild ${guild.name} (${
+						`${header}    Banning user ${member.user.tag} (${id}) from guild ${guild.name} (${
 							guild.id
 						}) because they were banned in ${bannedIn} (${ban.guild_id}) for: ${ban.reason ?? 'no reason'}`,
 					);
@@ -135,6 +137,6 @@ export class LoadBansOnReady extends Listener {
 			}
 		}
 
-		this.container.logger.info('Finished checking all bans across the guilds');
+		this.container.logger.info(`${header}Finished checking all bans across the guilds`);
 	}
 }

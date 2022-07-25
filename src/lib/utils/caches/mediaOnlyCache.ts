@@ -9,7 +9,7 @@ export async function loadMediaOnlyChannels() {
 		cache.set(channel.channel_id, true);
 	}
 
-	container.logger.info(`Loaded ${channels.length} media-only channels in cache`);
+	container.logger.info(`[MEDIA ONLY] Loaded ${channels.length} media-only channels in cache`);
 }
 
 export function isMediaOnlyChannel(channelId: string) {

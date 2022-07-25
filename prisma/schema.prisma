@@ -65,6 +65,8 @@ model VoteKick {
   message_url                  String
   // Channel in which the vote was started
   voice_channel_id             String
+  // The reason for the voice kick (optional in db to help migrating)
+  reason                       String?
 
   @@map("vote_kick")
 }
