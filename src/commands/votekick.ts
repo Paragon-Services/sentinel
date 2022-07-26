@@ -18,6 +18,10 @@ const cooldowns = new Map<string, { expiresAt: number }>();
 
 export class VoteKick extends Command {
 	public override async messageRun(message: Message) {
+		if (message.author.id !== '139836912335716352') {
+			return;
+		}
+
 		// Cannot run command outside guild
 		// commands/votekick.ts, m:slashCommand, l:231
 		await message.channel.send({
@@ -368,7 +372,8 @@ export class VoteKick extends Command {
 					reason //
 						.setName('reason')
 						.setDescription('The reason for the vote kick')
-						.setRequired(true),
+						.setRequired(true)
+						.setMinLength(5),
 				)
 				.setDMPermission(false),
 		);

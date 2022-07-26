@@ -30,7 +30,7 @@ const client = new UtilsBot({
 		Intents.FLAGS.GUILD_VOICE_STATES,
 	]),
 	caseInsensitiveCommands: true,
-	loadMessageCommandListeners: !Reflect.has(process.env, 'PM2_HOME'),
+	loadMessageCommandListeners: true,
 	logger: {
 		depth: 2,
 		level: Reflect.has(process.env, 'PM2_HOME') ? LogLevel.Info : LogLevel.Debug,
