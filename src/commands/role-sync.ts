@@ -52,6 +52,19 @@ export class RoleSyncCommand extends Subcommand {
 			});
 		}
 
+		if (roleInThisServer.managed) {
+			return interaction.reply({
+				ephemeral: true,
+				embeds: [
+					createInfoEmbed(
+						`The role ${roleInThisServer.toString()} (${
+							roleInThisServer.id
+						}) is managed and I cannot add it to members.`,
+					),
+				],
+			});
+		}
+
 		const me = await interaction.guild.members.fetch(this.container.client.user!.id);
 
 		if (me.roles.highest.position <= roleInThisServer.position) {
