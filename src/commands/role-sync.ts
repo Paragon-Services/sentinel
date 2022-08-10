@@ -333,6 +333,10 @@ export class RoleSyncCommand extends Subcommand {
 						break;
 					}
 
+					if (role.managed) {
+						continue;
+					}
+
 					if (role.name.toLowerCase().startsWith(input)) {
 						startsWith.push({
 							name: `⭐ ${role.name} (${role.id})`,
