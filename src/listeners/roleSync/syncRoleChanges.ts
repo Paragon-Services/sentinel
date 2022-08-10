@@ -25,17 +25,17 @@ export class SyncRole extends Listener {
 					continue;
 				}
 
-				const maybeMember = await Result.fromAsync(() => destinationGuild.members.fetch(newMember.id));
+				const maybeDestinationMember = await Result.fromAsync(() => destinationGuild.members.fetch(newMember.id));
 
-				await maybeMember.inspectAsync(async (member) => {
+				await maybeDestinationMember.inspectAsync(async (destinationMember) => {
 					// Had the role before, but not anymore
 					if (oldMember.roles.cache.has(role.id)) {
 						this.container.logger.info(
-							`${header}Removing role ${destinationRole.name} (${destinationRole.id}) from ${member.user.tag} (${member.user.id}) in guild ${destinationGuild.name}`,
+							`${header}Removing role ${destinationRole.name} (${destinationRole.id}) from ${destinationMember.user.tag} (${destinationMember.user.id}) in guild ${destinationGuild.name} as they lost it from guild ${newMember.guild.name}`,
 						);
 
 						try {
-							await member.roles.remove(
+							await destinationMember.roles.remove(
 								entry.destination_role_id,
 								`Role sync: removing role as the member lost it on the ${newMember.guild.name} server.`,
 							);
@@ -44,11 +44,11 @@ export class SyncRole extends Listener {
 						}
 					} else {
 						this.container.logger.info(
-							`${header}Adding role ${destinationRole.name} (${destinationRole.id}) to ${member.user.tag} (${member.user.id}) in guild ${destinationGuild.name}`,
+							`${header}Adding role ${destinationRole.name} (${destinationRole.id}) to ${destinationMember.user.tag} (${destinationMember.user.id}) in guild ${destinationGuild.name} as they gained it in ${newMember.guild.name}`,
 						);
 
 						try {
-							await member.roles.add(
+							await destinationMember.roles.add(
 								entry.destination_role_id,
 								`Role sync: adding role as the member received it on the ${newMember.guild.name} server.`,
 							);

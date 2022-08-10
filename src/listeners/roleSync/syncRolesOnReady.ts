@@ -84,7 +84,7 @@ export class SyncRolesOnReady extends Listener {
 							);
 						} catch (err) {
 							this.container.logger.warn(
-								`${header}  Failed to remove role ${entry.destination_role_id} to ${destinationMember.user.tag}`,
+								`${header}  Failed to remove role ${entry.destination_role_id} from ${destinationMember.user.tag}`,
 								err,
 							);
 						}
