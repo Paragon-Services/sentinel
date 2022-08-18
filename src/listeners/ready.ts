@@ -36,6 +36,10 @@ export class ReadyEvent extends Listener {
 			if (!client.schedule.queue.some((task) => task.taskID === 'checkPendingKickResets')) {
 				await client.schedule.add('checkPendingKickResets', '* * * * *');
 			}
+
+			if (!client.schedule.queue.some((task) => task.taskID === 'invitePrune')) {
+				await client.schedule.add('invitePrune', '*/10 * * * *');
+			}
 		} catch (error) {
 			client.emit('wtf', error);
 		}

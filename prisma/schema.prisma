@@ -146,3 +146,12 @@ model RoleSync {
 
   @@map("role_syncs")
 }
+
+// Invite pruning //
+model InvitePrune {
+  /// The id of the guild in which to filter invites
+  /// An existing entry means we should consider the guild.
+  guild_id String @id
+
+  @@map("invite_prunes")
+}
