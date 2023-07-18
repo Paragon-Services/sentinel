@@ -1,6 +1,4 @@
-// @ts-ignore We cannot use import type here because we use this import to create an alias
-import { Prisma } from '@prisma/client';
-import AutoPinCreateInput = Prisma.AutoPinCreateInput;
+import type { Prisma } from '@prisma/client';
 import { inlineCode, time } from '@discordjs/builders';
 import { ApplyOptions } from '@sapphire/decorators';
 import { Subcommand, SubcommandMappingArray } from '@sapphire/plugin-subcommands';
@@ -88,7 +86,7 @@ export class AutoPinCommand extends Subcommand {
 
 		const parsedCheckEvery = checkEveryOffset / Time.Second;
 		const firstCheck = new Date();
-		const autoPinData: AutoPinCreateInput = {
+		const autoPinData: Prisma.AutoPinCreateInput = {
 			channel_id: channel.id,
 			guild_id: interaction.guildId,
 			check_every_seconds: parsedCheckEvery,
