@@ -62,12 +62,12 @@ export async function createVoteKick(
 					.setCustomId(generateButtonId('yes', userToKick.id, voiceChannel.id))
 					.setStyle(ButtonStyle.Secondary)
 					.setLabel('Agree with vote')
-					.setEmoji('check:889466938433101835'),
+					.setEmoji('1180183935192412290'),
 				new ButtonBuilder()
 					.setCustomId(generateButtonId('no', userToKick.id, voiceChannel.id))
 					.setStyle(ButtonStyle.Secondary)
 					.setLabel('Disagree with vote')
-					.setEmoji('❌'),
+					.setEmoji('1180190755432714393'),
 			),
 		],
 		allowedMentions: {

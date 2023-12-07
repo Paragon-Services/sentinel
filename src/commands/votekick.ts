@@ -124,12 +124,12 @@ export class VoteKick extends Command {
 						.setCustomId('ignored')
 						.setStyle(ButtonStyle.Secondary)
 						.setLabel('Agree with vote')
-						.setEmoji('check:889466938433101835'),
+						.setEmoji('1180183935192412290'),
 					new ButtonBuilder()
 						.setCustomId('ignored-2')
 						.setStyle(ButtonStyle.Secondary)
 						.setLabel('Disagree with vote')
-						.setEmoji('❌'),
+						.setEmoji('1180190755432714393'),
 				),
 			],
 		});
