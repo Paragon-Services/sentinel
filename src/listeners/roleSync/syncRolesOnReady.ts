@@ -1,3 +1,4 @@
+import { RoleSyncType } from '@prisma/client';
 import { ApplyOptions } from '@sapphire/decorators';
 import { Events, Listener } from '@sapphire/framework';
 import type { Guild, GuildMember } from 'discord.js';
@@ -8,7 +9,11 @@ const header = '[ROLE SYNC] ';
 @ApplyOptions<Listener.Options>({ event: Events.ClientReady })
 export class SyncRolesOnReady extends Listener {
 	public async run() {
-		const entries = await this.container.prisma.roleSync.findMany();
+		const entries = await this.container.prisma.roleSync.findMany({
+			where: {
+				type: RoleSyncType.AcrossGuilds,
+			},
+		});
 
 		// Don't run for no entries
 		if (entries.length === 0) {

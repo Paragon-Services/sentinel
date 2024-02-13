@@ -135,6 +135,14 @@ model PollAnswer {
 }
 
 // Role syncing across guilds (lord help) //
+
+enum RoleSyncType {
+  /// Sync a role across guilds
+  AcrossGuilds
+  /// Sync a role across the same guild for visisble rank roles (currently used for the titan role and rank roles)
+  VisibleRank
+}
+
 model RoleSync {
   id                   String @id @default(cuid())
   // The origin guild from where to monitor role changes
@@ -146,6 +154,9 @@ model RoleSync {
   // The destination role id in the destination guild that should be triggered by this role sync
   destination_role_id  String
 
+  /// The type of role sync
+  type RoleSyncType @default(AcrossGuilds)
+
   @@map("role_syncs")
 }
 
@@ -156,4 +167,51 @@ model InvitePrune {
   guild_id String @id
 
   @@map("invite_prunes")
+}
+
+// Notifications //
+model Notification {
+  id        String @id @default(cuid())
+  content   String
+  channelId String
+  guildId   String
+  roleId    String
+
+  @@map("notifications")
+}
+
+model UserNotification {
+  userId         String
+  notificationId String
+  notifiedAt     DateTime @default(now())
+
+  @@id([userId, notificationId])
+  @@map("user_notifications")
+}
+
+// TITAN ROLES //
+model TitanGuildRoleConfig {
+  guildId String @id
+
+  /// The actual role in Discord that is used to track whether a member has the titan role (and as such can gift a role, or make a vanity url)
+  originalTitanRoleId String?
+
+  /// The role that can be gifted by titan members
+  giftableRoleId String?
+
+  /// The roles whose colors should be checked for custom titan roles so that the color is not too similar
+  staffRoles String[]
+
+  @@map("titan_guild_role_configs")
+}
+
+model TitanMember {
+  guildId String
+  userId  String
+
+  customRoleId       String?
+  giftedRoleToUserId String?
+
+  @@id([guildId, userId])
+  @@map("titan_members")
 }

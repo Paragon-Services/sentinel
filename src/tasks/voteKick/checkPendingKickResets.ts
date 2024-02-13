@@ -11,6 +11,11 @@ export class CheckPendingKickResets extends Task {
 			select: { id: true },
 		});
 
+		if (!results.length) {
+			this.container.logger.info('[KICK COUNTER RESET] No users had their kick counters reset');
+			return null;
+		}
+
 		// Find all users that should have their counter reset and reset them
 		await this.container.prisma.user.updateMany({
 			where: {
@@ -24,8 +29,8 @@ export class CheckPendingKickResets extends Task {
 			},
 		});
 
-		this.container.logger.info(`${results.length} users had their kick counters reset`);
-		this.container.logger.info(JSON.stringify(results.map((it) => it.id)));
+		this.container.logger.info(`[KICK COUNTER RESET] ${results.length} users had their kick counters reset`);
+		this.container.logger.info('[KICK COUNTER RESET]', JSON.stringify(results.map((it) => it.id)));
 
 		return null;
 	}

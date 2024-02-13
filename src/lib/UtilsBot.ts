@@ -1,3 +1,4 @@
+import { readdir } from 'node:fs/promises';
 import { SqlHighlighter } from '@mikro-orm/sql-highlighter';
 import type Prisma from '@prisma/client';
 import { PrismaClient } from '@prisma/client';
@@ -20,6 +21,16 @@ export class UtilsBot extends SapphireClient {
 	public override fetchPrefix = () => null;
 
 	public override async login(token?: string) {
+		this.logger.debug('Loading modules');
+
+		const modules = await readdir(new URL('../modules/', import.meta.url));
+		this.logger.debug(`Found ${modules.length} modules: ${modules.join(', ')}`);
+
+		for (const module of modules) {
+			this.stores.registerPath(new URL(`../modules/${module}/`, import.meta.url));
+			this.logger.info(`Loaded module ${module}`);
+		}
+
 		const highlighter = this.sqlHighlighter;
 
 		const prisma = new PrismaClient({

@@ -14,6 +14,11 @@ export class CheckPendingKickResets extends Task {
 			})
 		).map((it) => it.id);
 
+		if (!results.length) {
+			this.container.logger.info('[ROLE REMOVAL] No users had their timeout role removed');
+			return null;
+		}
+
 		// Preemptively update the database to prevent duplicates
 		await this.container.prisma.user.updateMany({
 			where: { id: { in: results } },

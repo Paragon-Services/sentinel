@@ -1,3 +1,4 @@
+import { RoleSyncType } from '@prisma/client';
 import { ApplyOptions } from '@sapphire/decorators';
 import { Events, Listener, Result } from '@sapphire/framework';
 import type { GuildMember } from 'discord.js';
@@ -14,6 +15,7 @@ export class SyncRole extends Listener {
 				where: {
 					origin_guild_id: newMember.guild.id,
 					origin_role_id: role.id,
+					type: RoleSyncType.AcrossGuilds,
 				},
 			});
 

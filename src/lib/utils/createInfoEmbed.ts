@@ -1,7 +1,7 @@
 import { container } from '@sapphire/framework';
 import { EmbedBuilder } from 'discord.js';
 
-export function createInfoEmbed(message: string) {
+export function createInfoEmbed(message: string | null) {
 	return new EmbedBuilder()
 		.setTitle(container.client.user!.username)
 		.setDescription(message)

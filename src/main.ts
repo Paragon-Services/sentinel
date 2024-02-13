@@ -38,7 +38,7 @@ const client = new UtilsBot({
 	intents: new IntentsBitField([
 		IntentsBitField.Flags.Guilds,
 		IntentsBitField.Flags.GuildMembers,
-		IntentsBitField.Flags.GuildBans,
+		IntentsBitField.Flags.GuildModeration,
 		IntentsBitField.Flags.GuildMessages,
 		IntentsBitField.Flags.GuildVoiceStates,
 		IntentsBitField.Flags.DirectMessages,

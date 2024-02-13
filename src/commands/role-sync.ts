@@ -1,3 +1,4 @@
+import { RoleSyncType } from '@prisma/client';
 import { ApplyOptions } from '@sapphire/decorators';
 import { PaginatedMessage } from '@sapphire/discord.js-utilities';
 import { Subcommand, type SubcommandMappingArray } from '@sapphire/plugin-subcommands';
@@ -84,6 +85,7 @@ export class RoleSyncCommand extends Subcommand {
 				destination_role_id: roleInThisServer.id,
 				origin_guild_id: resolvedOriginGuild.id,
 				origin_role_id: originRole.id,
+				type: RoleSyncType.AcrossGuilds,
 			},
 		});
 
@@ -196,7 +198,7 @@ export class RoleSyncCommand extends Subcommand {
 
 	public async listSubcommand(interaction: Subcommand.ChatInputCommandInteraction<'cached'>) {
 		const roleSyncs = await this.container.prisma.roleSync.findMany({
-			where: { destination_guild_id: interaction.guildId },
+			where: { destination_guild_id: interaction.guildId, type: RoleSyncType.AcrossGuilds },
 		});
 
 		if (roleSyncs.length === 0) {
@@ -206,7 +208,7 @@ export class RoleSyncCommand extends Subcommand {
 			});
 		}
 
-		const paginated = new PaginatedMessage({ template: createInfoEmbed('') });
+		const paginated = new PaginatedMessage({ template: createInfoEmbed(null) });
 
 		const usableRoleSyncs: string[] = [];
 
@@ -257,7 +259,7 @@ export class RoleSyncCommand extends Subcommand {
 		return paginated.run(interaction);
 	}
 
-	public async autocompleteRun(interaction: Subcommand.AutocompleteInteraction<'cached'>) {
+	public override async autocompleteRun(interaction: Subcommand.AutocompleteInteraction<'cached'>) {
 		const focusedOption = interaction.options.getFocused(true);
 		const input = focusedOption.value.toLowerCase();
 
@@ -372,7 +374,7 @@ export class RoleSyncCommand extends Subcommand {
 			case 'role_sync': {
 				// Role sync entries for this server
 				const entries = await this.container.prisma.roleSync.findMany({
-					where: { destination_guild_id: interaction.guildId },
+					where: { destination_guild_id: interaction.guildId, type: RoleSyncType.AcrossGuilds },
 				});
 
 				const options: ApplicationCommandOptionChoiceData[] = [];
@@ -528,11 +530,13 @@ export class RoleSyncCommand extends Subcommand {
 				origin_guild_id: maybeOriginGuildId[1],
 				origin_role_id: maybeOriginRoleId[1],
 				destination_role_id: maybeDestinationRoleId[1],
+				type: RoleSyncType.AcrossGuilds,
 			};
 		}
 
 		return {
 			id: option,
+			type: RoleSyncType.AcrossGuilds,
 		};
 	}
 }
