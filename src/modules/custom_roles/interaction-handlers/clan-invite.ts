@@ -1,8 +1,16 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
 import type { ButtonInteraction } from 'discord.js';
-import { createInfoEmbed } from '../../../lib/utils/createEmbed.js';
 import { ClanManager, ClanMemberAddStatus } from '../../../lib/abilities/ClanManager.js';
+import { createInfoEmbed } from '../../../lib/utils/createEmbed.js';
+
+const welcomeMessages = [
+	'Quick, everyone! Hide!',
+	'May the ritual commence.',
+	'Better late than never, I guess.',
+	`A team isn't complete without its bottom frag.`,
+	`Who's up for swifties?`,
+];
 
 @ApplyOptions<InteractionHandler.Options>({
 	interactionHandlerType: InteractionHandlerTypes.Button,
@@ -97,5 +105,7 @@ export class ClanInvite extends InteractionHandler {
 			content: `✅ Invitation accepted.`,
 			components: [],
 		});
+
+		await (await clanManager.getClanChannel())?.send(`<@${data.invitedUser}> has joined the clan! ${welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)]}`);
 	}
 }
