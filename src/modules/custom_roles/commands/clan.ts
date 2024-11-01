@@ -249,7 +249,7 @@ export class ClanCommand extends Subcommand {
 		}
 
 		cooldowns.set(cooldownKey, Date.now() + clanInviteCooldown);
-		this.container.logger.info(`[CLAN] ${interaction.member.user.username} invited ${memberToInvite.user.username} to their clan.`);
+		this.container.logger.info(`[CLAN] ${interaction.member.user.username} invited ${memberToInvite.user.username} to their clan. Sending invitation...`);
 
 		await invitesChannel.send({
 			content: `**📨 Invitation for ${memberToInvite}**\nYou have been invited to join the clan **${clanName}**!`,
@@ -267,14 +267,22 @@ export class ClanCommand extends Subcommand {
 						.setCustomId(`clan.invite.accept:${memberToInvite.id}:${interaction.member.id}`),
 				)
 			]
-		});
+		}).catch(error => this.container.logger.info(
+			`[CLAN] ${interaction.member.user.username} tried to invite ${memberToInvite.user.username} but an error occurred when trying to send invitation: ${error}`
+		));
+
+		this.container.logger.info(`[CLAN] ${interaction.member.user.username} invited ${memberToInvite.user.username} to their clan. Invitation sent, updating reply...`);
 
 		await interaction.editReply({
 			embeds: [createInfoEmbed(
 				`# 📨 Invitation sent\nThe invitation has been sent. You can see it in the <#${invitesChannel.id}> channel.`
 			)],
 			components: [],
-		});
+		}).catch(error => this.container.logger.info(
+			`[CLAN] ${interaction.member.user.username} tried to invite ${memberToInvite.user.username} but an error occurred when trying to update the reply: ${error}`
+		));
+
+		this.container.logger.info(`[CLAN] ${interaction.member.user.username} invited ${memberToInvite.user.username} to their clan. Reply updated.`);
 	}
 
 	public async kickSubcommand(interaction: Subcommand.ChatInputCommandInteraction<'cached'>) {
