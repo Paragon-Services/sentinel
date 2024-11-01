@@ -191,6 +191,7 @@ export class ClanCommand extends Subcommand {
 		const memberToInvite = interaction.options.getMember('member');
 
 		if (!memberToInvite) {
+			this.container.logger.info(`[CLAN] ${interaction.member.user.username} tried to invite a member but the provided member was not found.`);
 			await interaction.editReply({
 				embeds: [createErrorEmbed('The provided member could not be found.')],
 				components: [],
@@ -202,6 +203,7 @@ export class ClanCommand extends Subcommand {
 		const cooldownKey = `${interaction.user.id}-${memberToInvite.id}`;
 
 		if (cooldowns.has(cooldownKey) && Date.now() < cooldowns.get(cooldownKey)!) {
+			this.container.logger.info(`[CLAN] ${interaction.member.user.username} tried to invite a member but they were on cooldown.`);
 			await interaction.editReply({
 				embeds: [createErrorEmbed(`You can only invite the same member once ${clanInviteDelayString}.`)],
 				components: [],
@@ -217,6 +219,7 @@ export class ClanCommand extends Subcommand {
 		const clanMembers = await clanManager.getDiscordClanMembers();
 
 		if (!invitesChannel) {
+			this.container.logger.info(`[CLAN] ${interaction.member.user.username} tried to invite a member but the invites channel was not configured.`);
 			await interaction.editReply({
 				embeds: [createErrorEmbed('The invites channel was not configured. Please contact modmail to solve this issue.')],
 				components: [],
@@ -226,6 +229,7 @@ export class ClanCommand extends Subcommand {
 		}
 
 		if (!clan) {
+			this.container.logger.info(`[CLAN] ${interaction.member.user.username} tried to invite a member but they do not own a clan.`);
 			await interaction.editReply({
 				embeds: [createErrorEmbed('You do not own a clan.')],
 				components: [],
@@ -235,6 +239,7 @@ export class ClanCommand extends Subcommand {
 		}
 
 		if (clanMembers.size >= MAX_MEMBERS_IN_CLAN) {
+			this.container.logger.info(`[CLAN] ${interaction.member.user.username} tried to invite a member but the clan already has the maximum amount of members.`);
 			await interaction.editReply({
 				embeds: [createErrorEmbed('Your clan already has the maximum amount of members.')],
 				components: [],
@@ -244,6 +249,8 @@ export class ClanCommand extends Subcommand {
 		}
 
 		cooldowns.set(cooldownKey, Date.now() + clanInviteCooldown);
+		this.container.logger.info(`[CLAN] ${interaction.member.user.username} invited ${memberToInvite.user.username} to their clan.`);
+
 		await invitesChannel.send({
 			content: `**📨 Invitation for ${memberToInvite}**\nYou have been invited to join the clan **${clanName}**!`,
 			components: [
