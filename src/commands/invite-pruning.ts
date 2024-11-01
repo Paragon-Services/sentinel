@@ -1,7 +1,7 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Subcommand, type SubcommandMappingArray } from '@sapphire/plugin-subcommands';
 import { PermissionFlagsBits } from 'discord-api-types/v10';
-import { createInfoEmbed } from '../lib/utils/createInfoEmbed.js';
+import { createInfoEmbed } from '../lib/utils/createEmbed.js';
 
 @ApplyOptions<Subcommand.Options>({
 	description: 'Manages the automatic invite pruning in this server',

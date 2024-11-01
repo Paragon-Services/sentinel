@@ -3,7 +3,7 @@ import { PaginatedMessage } from '@sapphire/discord.js-utilities';
 import { Subcommand, type SubcommandMappingArray } from '@sapphire/plugin-subcommands';
 import { chunk } from '@sapphire/utilities';
 import { PermissionFlagsBits, type ApplicationCommandOptionChoiceData } from 'discord.js';
-import { createInfoEmbed } from '../../../lib/utils/createInfoEmbed.js';
+import { createInfoEmbed } from '../../../lib/utils/createEmbed.js';
 import { trimPretty } from '../../../lib/utils/trim.js';
 
 export class VisibleRankRoleSetup extends Subcommand {

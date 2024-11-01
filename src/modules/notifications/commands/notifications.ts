@@ -7,7 +7,7 @@ import {
 	AttachmentBuilder,
 	ChannelType,
 } from 'discord.js';
-import { createInfoEmbed } from '../../../lib/utils/createInfoEmbed.js';
+import { createInfoEmbed } from '../../../lib/utils/createEmbed.js';
 
 export class NotificationsCommand extends Subcommand {
 	public subcommandMappings: SubcommandMappingArray = [

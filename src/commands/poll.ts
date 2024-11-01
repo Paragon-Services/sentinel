@@ -6,7 +6,7 @@ import { Duration } from '@sapphire/time-utilities';
 import { chunk } from '@sapphire/utilities';
 import { ButtonStyle, PermissionFlagsBits } from 'discord-api-types/v10';
 import { ActionRowBuilder, ButtonBuilder } from 'discord.js';
-import { createInfoEmbed } from '../lib/utils/createInfoEmbed.js';
+import { createInfoEmbed } from '../lib/utils/createEmbed.js';
 import { generatePollEmbedDescription } from '../lib/utils/polls/generatePollEmbed.js';
 import { trimPretty } from '../lib/utils/trim.js';
 

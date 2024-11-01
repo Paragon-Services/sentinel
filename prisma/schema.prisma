@@ -149,7 +149,7 @@ model PollAnswer {
 enum RoleSyncType {
   /// Sync a role across guilds
   AcrossGuilds
-  /// Sync a role across the same guild for visisble rank roles (currently used for the titan role and rank roles)
+  /// Sync a role across the same guild for visisble rank roles (currently used for the premium role and rank roles)
   VisibleRank
 }
 
@@ -199,26 +199,29 @@ model UserNotification {
   @@map("user_notifications")
 }
 
-// TITAN ROLES //
-model TitanGuildRoleConfig {
+// PREMIUM ROLES //
+model PremiumGuildRoleConfig {
   guildId String @id
 
-  /// The actual role in Discord that is used to track whether a member has the titan role (and as such can gift a role, or make a vanity url)
-  originalTitanRoleId String?
+  /// The role that can be gifted by premium members
+  legendRoleId String?
 
-  /// The role that can be gifted by titan members
-  giftableRoleId String?
+  /// The category in which the clan channels should be created
+  clanCategoryId String?
 
-  /// The roles whose colors should be checked for custom titan roles so that the color is not too similar
+  /// The channel in which clan invites should be sent
+  clanInviteChannelId String?
+
+  /// The roles whose colors should be checked for custom premium roles so that the color is not too similar
   staffRoles String[]
 
-  /// The role to use as starting position for the custom titan roles, with a fallback to the original titan role
+  /// The role to use as starting position for the custom premium roles, with a fallback to the original premium role
   startingPositionRoleId String?
 
-  @@map("titan_guild_role_configs")
+  @@map("premium_guild_role_configs")
 }
 
-model TitanMember {
+model PremiumMember {
   guildId String
   userId  String
 
@@ -228,7 +231,7 @@ model TitanMember {
   giftingCooldown DateTime?
 
   @@id([guildId, userId])
-  @@map("titan_members")
+  @@map("premium_members")
 }
 
 model ForbiddenRoleName {
@@ -238,4 +241,40 @@ model ForbiddenRoleName {
 
   @@id([guildId, rawPattern])
   @@map("forbidden_role_names")
+}
+
+model RoleAbilities {
+  guildId String
+  roleId  String
+
+  canCreateCustomRole Boolean @default(false)
+  canGiftLegend       Boolean @default(false)
+  canCreateClan       Boolean @default(false)
+
+  @@id([guildId, roleId])
+  @@map("role_abilities")
+}
+
+model Clan {
+  guildId      String
+  customRoleId String
+
+  channelId       String
+  isRoleClaimable Boolean      @default(false)
+  members         ClanMember[]
+
+  @@id([guildId, customRoleId])
+  @@map("clan")
+}
+
+model ClanMember {
+  clan             Clan   @relation(fields: [clanGuildId, clanCustomRoleId], references: [guildId, customRoleId])
+  clanGuildId      String
+  clanCustomRoleId String
+  userId           String
+
+  claimedRole Boolean
+
+  @@id([clanGuildId, clanCustomRoleId, userId])
+  @@map("clan_member")
 }

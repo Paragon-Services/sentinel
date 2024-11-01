@@ -2,7 +2,7 @@ import { RoleSyncType } from '@prisma/client';
 import { ApplyOptions } from '@sapphire/decorators';
 import { Command } from '@sapphire/framework';
 import { type Message } from 'discord.js';
-import { createInfoEmbed } from '../../../lib/utils/createInfoEmbed.js';
+import { createInfoEmbed } from '../../../lib/utils/createEmbed.js';
 
 @ApplyOptions<Command.Options>({
 	description: 'Toggles whether your rank role should be showcased to others or not',

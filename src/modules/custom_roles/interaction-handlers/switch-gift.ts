@@ -1,10 +1,10 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
 import type { ButtonInteraction } from 'discord.js';
-import { createInfoEmbed } from '../../../lib/utils/createInfoEmbed.js';
+import { createInfoEmbed } from '../../../lib/utils/createEmbed.js';
 
-export function makeTitanRoleGiftSwitchId(originalUser: string, newUser: string, action: 'cancel' | 'confirm') {
-	return `titan-role-switch:${originalUser}:${newUser}:${action}` as const;
+export function makePremiumRoleGiftSwitchId(originalUser: string, newUser: string, action: 'cancel' | 'confirm') {
+	return `premium-role-switch:${originalUser}:${newUser}:${action}` as const;
 }
 
 const thirtyMinutes = 1_000 * 60 * 30;
@@ -20,7 +20,7 @@ export class SwitchGiftedRole extends InteractionHandler {
 			return this.none();
 		}
 
-		if (split[0] !== 'titan-role-switch') {
+		if (split[0] !== 'premium-role-switch') {
 			return this.none();
 		}
 
@@ -50,11 +50,11 @@ export class SwitchGiftedRole extends InteractionHandler {
 			return;
 		}
 
-		const guildData = await this.container.prisma.titanGuildRoleConfig.findFirstOrThrow({
+		const guildData = await this.container.prisma.premiumGuildRoleConfig.findFirstOrThrow({
 			where: { guildId: interaction.guildId },
 		});
 
-		const memberData = await this.container.prisma.titanMember.findFirstOrThrow({
+		const memberData = await this.container.prisma.premiumMember.findFirstOrThrow({
 			where: { guildId: interaction.guildId, userId: data.originalUser },
 		});
 
@@ -74,17 +74,17 @@ export class SwitchGiftedRole extends InteractionHandler {
 
 		if (oldGuildMember) {
 			await oldGuildMember.roles.remove(
-				guildData.giftableRoleId!,
-				`Titan (${interaction.user.tag}) switched gifted role to ${newGuildMember.user.tag}`,
+				guildData.legendRoleId!,
+				`Premium member (${interaction.user.tag}) switched gifted role to ${newGuildMember.user.tag}`,
 			);
 		}
 
 		await newGuildMember.roles.add(
-			guildData.giftableRoleId!,
-			`Titan (${interaction.user.tag}) switched gifted role from ${oldGuildMember?.user.tag ?? 'nobody'}`,
+			guildData.legendRoleId!,
+			`Premium member (${interaction.user.tag}) switched gifted role from ${oldGuildMember?.user.tag ?? 'nobody'}`,
 		);
 
-		await this.container.prisma.titanMember.update({
+		await this.container.prisma.premiumMember.update({
 			where: { guildId_userId: { guildId: interaction.guildId, userId: data.originalUser } },
 			data: { giftedRoleToUserId: data.newUser, giftingCooldown: new Date(Date.now() + thirtyMinutes) },
 		});

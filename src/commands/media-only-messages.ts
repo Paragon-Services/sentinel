@@ -2,7 +2,7 @@ import { ApplyOptions } from '@sapphire/decorators';
 import { Subcommand, type SubcommandMappingArray } from '@sapphire/plugin-subcommands';
 import { PermissionFlagsBits } from 'discord-api-types/v10';
 import { addMediaOnlyChannel, removeMediaOnlyChannel } from '../lib/utils/caches/mediaOnlyCache.js';
-import { createInfoEmbed } from '../lib/utils/createInfoEmbed.js';
+import { createInfoEmbed } from '../lib/utils/createEmbed.js';
 
 @ApplyOptions<Subcommand.Options>({
 	description: 'Manages the channels that require an attachment to be sent with the message',

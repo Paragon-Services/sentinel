@@ -4,7 +4,7 @@ import { ApplyOptions } from '@sapphire/decorators';
 import { InteractionHandler, InteractionHandlerTypes, Result } from '@sapphire/framework';
 import type { ButtonInteraction, Message } from 'discord.js';
 import { EmbedBuilder } from 'discord.js';
-import { createInfoEmbed } from '../lib/utils/createInfoEmbed.js';
+import { createInfoEmbed } from '../lib/utils/createEmbed.js';
 import { generatePollEmbedDescription } from '../lib/utils/polls/generatePollEmbed.js';
 
 @ApplyOptions<InteractionHandler.Options>({ interactionHandlerType: InteractionHandlerTypes.Button })

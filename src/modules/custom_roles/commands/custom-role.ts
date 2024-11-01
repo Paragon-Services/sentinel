@@ -1,12 +1,11 @@
 import { Buffer } from 'node:buffer';
 import { Subcommand, type SubcommandMappingArray } from '@sapphire/plugin-subcommands';
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, time, type RoleEditOptions, TimestampStyles } from 'discord.js';
+import { type RoleEditOptions } from 'discord.js';
 import looksSame, { type Color } from 'looks-same';
 import magicBytes from 'magic-bytes.js';
-import { createInfoEmbed } from '../../../lib/utils/createInfoEmbed.js';
-import { makeTitanRoleGiftSwitchId } from '../interaction-handlers/switch-gift.js';
-
-const thirtyMinutes = 1_000 * 60 * 30;
+import { MemberAbilities } from '../../../lib/abilities/MemberAbilities.js';
+import { RoleAbilitiesCalculator } from '../../../lib/abilities/RoleAbilities.js';
+import { createInfoEmbed } from '../../../lib/utils/createEmbed.js';
 
 // tolerance will be something that we need to definitely tweak over time. Right now it's pretty loose, you need to be reaaal close to the staff colors to be rejected
 const kTolerance = 5;
@@ -24,7 +23,7 @@ const forbiddenColors = (): ColorMatch[] => [
 	},
 ];
 
-export class TitanRoleCommand extends Subcommand {
+export class CustomRoleCommand extends Subcommand {
 	public subcommandMappings: SubcommandMappingArray = [
 		{
 			type: 'method',
@@ -36,29 +35,32 @@ export class TitanRoleCommand extends Subcommand {
 			name: 'toggle',
 			chatInputRun: 'toggleSubcommand',
 		},
-		{
-			type: 'method',
-			name: 'gift-legend',
-			chatInputRun: 'giftRoleSubcommand',
-		},
 	];
 
 	public async editSubcommand(interaction: Subcommand.ChatInputCommandInteraction<'cached'>) {
-		const guildConfig = await this.container.prisma.titanGuildRoleConfig.findFirst({
+		const guildConfig = await this.container.prisma.premiumGuildRoleConfig.findFirst({
 			where: { guildId: interaction.guildId },
 		});
 
-		if (!guildConfig?.originalTitanRoleId) {
+		const roleAbilitiesCalculator = new RoleAbilitiesCalculator(interaction.guildId);
+		const memberAbilities = new MemberAbilities(interaction.member);
+
+		await roleAbilitiesCalculator.computeList();
+		await memberAbilities.computeAbilities();
+
+		const premiumRoleIds = roleAbilitiesCalculator.getPremiumRoleIds('canCreateCustomRole');
+
+		if (premiumRoleIds.length < 1) {
 			await interaction.reply({
-				embeds: [createInfoEmbed("This server doesn't support custom Titan roles.")],
+				embeds: [createInfoEmbed("This server doesn't support premium custom roles.")],
 				ephemeral: true,
 			});
 			return;
 		}
 
-		if (!interaction.member.roles.cache.has(guildConfig.originalTitanRoleId)) {
+		if (!memberAbilities.hasAbility('canCreateCustomRole')) {
 			await interaction.reply({
-				embeds: [createInfoEmbed('You do not have the Titan role.')],
+				embeds: [createInfoEmbed('You do not have the ability to create a custom role.')],
 				ephemeral: true,
 			});
 
@@ -69,14 +71,20 @@ export class TitanRoleCommand extends Subcommand {
 			ephemeral: true,
 		});
 
-		const titanMember = await this.container.prisma.titanMember.findFirst({
+		const premiumMember = await this.container.prisma.premiumMember.findFirst({
 			where: { guildId: interaction.guildId, userId: interaction.user.id },
 		});
 
-		const titanRole = interaction.guild.roles.cache.get(guildConfig.originalTitanRoleId) ?? null;
-		const positionRole = interaction.guild.roles.cache.get(guildConfig.startingPositionRoleId!) ?? null;
-		const oldRole = interaction.guild.roles.cache.get(titanMember?.customRoleId ?? '') ?? null;
-		const position = (positionRole?.position ?? titanRole?.position ?? 0) + 1;
+		const premiumRoles = [...interaction.guild.roles.cache.values()].filter(
+			role => premiumRoleIds.includes(role.id)
+		);
+		const lowestPremiumRole = premiumRoles.reduce(
+			(role, lowestRole) => role.position < lowestRole.position ? role : lowestRole, premiumRoles[0]
+		);
+
+		const positionRole = interaction.guild.roles.cache.get(guildConfig?.startingPositionRoleId ?? '') ?? null;
+		const oldRole = interaction.guild.roles.cache.get(premiumMember?.customRoleId ?? '') ?? null;
+		const position = (positionRole?.position ?? lowestPremiumRole?.position ?? 0) + 1;
 
 		const name = interaction.options.getString('name');
 		const rawColor = interaction.options.getString('color');
@@ -85,7 +93,7 @@ export class TitanRoleCommand extends Subcommand {
 
 		if (!oldRole && !name) {
 			await interaction.editReply({
-				embeds: [createInfoEmbed('You do not have a custom Titan role. Please provide a name to create one!')],
+				embeds: [createInfoEmbed('You do not have a premium custom role. Please provide a name to create one!')],
 			});
 
 			return;
@@ -111,7 +119,7 @@ export class TitanRoleCommand extends Subcommand {
 
 		if (color) {
 			const staffColors: ColorMatch[] = (
-				guildConfig.staffRoles
+				guildConfig?.staffRoles
 					.map((id) => {
 						const role = interaction.guild.roles.cache.get(id);
 
@@ -125,7 +133,7 @@ export class TitanRoleCommand extends Subcommand {
 							roleName: role.name,
 						};
 					})
-					.filter((role) => role !== null) as ColorMatch[]
+					.filter((role) => role !== null) as ColorMatch[] ?? []
 			).concat(forbiddenColors());
 
 			this.similarityInColors(color, staffColors);
@@ -144,7 +152,7 @@ export class TitanRoleCommand extends Subcommand {
 				await interaction.editReply({
 					embeds: [
 						createInfoEmbed(
-							`Your custom Titan role color is too similar to the staff roles. Please choose a different color.`,
+							`Your premium custom role color is too similar to the staff roles. Please choose a different color.`,
 						),
 					],
 				});
@@ -189,7 +197,7 @@ export class TitanRoleCommand extends Subcommand {
 			position: oldRole ? undefined : position,
 			mentionable: false,
 			permissions: [],
-			reason: 'Custom Titan role',
+			reason: 'Premium custom role',
 		};
 
 		if (iconUrl || iconUpload) {
@@ -210,10 +218,10 @@ export class TitanRoleCommand extends Subcommand {
 			const newRole = oldRole ? await oldRole.edit(roleData) : await interaction.guild.roles.create(roleData);
 
 			if (!oldRole) {
-				await interaction.member.roles.add(newRole.id, 'Setup custom Titan role');
+				await interaction.member.roles.add(newRole.id, 'Setup premium custom role');
 			}
 
-			await this.container.prisma.titanMember.upsert({
+			await this.container.prisma.premiumMember.upsert({
 				where: { guildId_userId: { guildId: interaction.guildId, userId: interaction.user.id } },
 				update: { customRoleId: newRole.id },
 				create: {
@@ -227,13 +235,13 @@ export class TitanRoleCommand extends Subcommand {
 				embeds: [
 					createInfoEmbed(
 						oldRole ?
-							`Your custom Titan role has been updated.`
-						:	`Your custom Titan role has been created.`,
+							`Your premium custom role has been updated.`
+						:	`Your premium custom role has been created.`,
 					),
 				],
 			});
 		} catch (error) {
-			this.container.logger.error(`Failed to edit/create custom Titan role`, {
+			this.container.logger.error(`Failed to edit/create premium custom role`, {
 				userId: interaction.user.id,
 				guildId: interaction.guildId,
 				error,
@@ -242,7 +250,7 @@ export class TitanRoleCommand extends Subcommand {
 			await interaction.editReply({
 				embeds: [
 					createInfoEmbed(
-						'I was unable to create/edit your custom Titan role. If this persists, please contact the admins.',
+						'I was unable to create/edit your premium custom role. If this persists, please contact the admins.',
 					),
 				],
 			});
@@ -250,35 +258,39 @@ export class TitanRoleCommand extends Subcommand {
 	}
 
 	public async toggleSubcommand(interaction: Subcommand.ChatInputCommandInteraction<'cached'>) {
-		const guildConfig = await this.container.prisma.titanGuildRoleConfig.findFirst({
-			where: { guildId: interaction.guildId },
-		});
+		const roleAbilitiesCalculator = new RoleAbilitiesCalculator(interaction.guild.id);
+		const memberAbilities = new MemberAbilities(interaction.member);
 
-		if (!guildConfig?.originalTitanRoleId) {
+		await roleAbilitiesCalculator.computeList();
+		await memberAbilities.computeAbilities();
+
+		if (roleAbilitiesCalculator.getPremiumRoleIds('canCreateCustomRole').length < 1) {
 			await interaction.reply({
-				embeds: [createInfoEmbed("This server doesn't support custom Titan roles.")],
+				embeds: [createInfoEmbed("This server doesn't support premium custom roles.")],
 				ephemeral: true,
 			});
+
 			return;
 		}
 
-		if (!interaction.member.roles.cache.has(guildConfig.originalTitanRoleId)) {
+		if (!memberAbilities.hasAbility('canCreateCustomRole')) {
 			await interaction.reply({
-				embeds: [createInfoEmbed('You do not have the Titan role.')],
+				embeds: [createInfoEmbed('You do not have the ability to create a custom role.')],
 				ephemeral: true,
 			});
+
 			return;
 		}
 
-		const titanMember = await this.container.prisma.titanMember.findFirst({
+		const premiumMember = await this.container.prisma.premiumMember.findFirst({
 			where: { guildId: interaction.guildId, userId: interaction.user.id },
 		});
 
-		if (!titanMember?.customRoleId) {
+		if (!premiumMember?.customRoleId) {
 			await interaction.reply({
 				embeds: [
 					createInfoEmbed(
-						"You'll need to configure your custom Titan role by running the `/titan-role edit` command first!",
+						"You'll need to configure your premium custom role by running the `/custom-role edit` command first!",
 					),
 				],
 				ephemeral: true,
@@ -287,18 +299,18 @@ export class TitanRoleCommand extends Subcommand {
 			return;
 		}
 
-		const guildRole = interaction.guild.roles.cache.get(titanMember.customRoleId);
+		const guildRole = interaction.guild.roles.cache.get(premiumMember.customRoleId);
 
 		// Custom role no longer exists
 		if (!guildRole) {
-			await this.container.prisma.titanMember.update({
+			await this.container.prisma.premiumMember.update({
 				where: { guildId_userId: { guildId: interaction.guildId, userId: interaction.user.id } },
 				data: { customRoleId: null },
 			});
 
 			await interaction.reply({
 				embeds: [
-					createInfoEmbed('Your custom Titan role no longer exists. Run `/titan-role edit` to recreate it.'),
+					createInfoEmbed('Your premium custom role no longer exists. Run `/custom-role edit` to recreate it.'),
 				],
 				ephemeral: true,
 			});
@@ -308,20 +320,20 @@ export class TitanRoleCommand extends Subcommand {
 
 		try {
 			if (interaction.member.roles.cache.has(guildRole.id)) {
-				await interaction.member.roles.remove(guildRole, 'Toggled custom Titan role');
+				await interaction.member.roles.remove(guildRole, 'Toggled premium custom role');
 				await interaction.reply({
-					embeds: [createInfoEmbed('Your custom Titan role has been removed from your profile.')],
+					embeds: [createInfoEmbed('Your premium custom role has been removed from your profile.')],
 					ephemeral: true,
 				});
 			} else {
-				await interaction.member.roles.add(guildRole, 'Toggled custom Titan role');
+				await interaction.member.roles.add(guildRole, 'Toggled premium custom role');
 				await interaction.reply({
-					embeds: [createInfoEmbed('Your custom Titan role has been added to your profile.')],
+					embeds: [createInfoEmbed('Your premium custom role has been added to your profile.')],
 					ephemeral: true,
 				});
 			}
 		} catch (error) {
-			this.container.logger.error(`Failed to toggle custom Titan role`, {
+			this.container.logger.error(`Failed to toggle premium custom role`, {
 				userId: interaction.user.id,
 				guildId: interaction.guildId,
 				error,
@@ -330,164 +342,24 @@ export class TitanRoleCommand extends Subcommand {
 			await interaction.reply({
 				embeds: [
 					createInfoEmbed(
-						'I was unable to toggle your custom Titan role. If this persists, please contact the admins.',
+						'I was unable to toggle your premium custom role. If this persists, please contact the admins.',
 					),
 				],
 				ephemeral: true,
 			});
 		}
-	}
-
-	public async giftRoleSubcommand(interaction: Subcommand.ChatInputCommandInteraction<'cached'>) {
-		const guildConfig = await this.container.prisma.titanGuildRoleConfig.findFirst({
-			where: { guildId: interaction.guildId },
-		});
-
-		if (!guildConfig?.giftableRoleId || !guildConfig?.originalTitanRoleId) {
-			await interaction.reply({
-				embeds: [createInfoEmbed("This server doesn't support gifting the Legends Subscription roles.")],
-				ephemeral: true,
-			});
-
-			return;
-		}
-
-		if (!interaction.member.roles.cache.has(guildConfig.originalTitanRoleId)) {
-			await interaction.reply({
-				embeds: [createInfoEmbed('You do not have the Titan role.')],
-				ephemeral: true,
-			});
-
-			return;
-		}
-
-		const titanMember = await this.container.prisma.titanMember.findFirst({
-			where: { guildId: interaction.guildId, userId: interaction.user.id },
-		});
-
-		const user = interaction.options.getUser('user', true);
-		const targetMember = await interaction.guild.members.fetch(user.id).catch(() => null);
-
-		if (!targetMember) {
-			await interaction.reply({
-				embeds: [createInfoEmbed('I was unable to find the user you mentioned in this server.')],
-				ephemeral: true,
-			});
-
-			return;
-		}
-
-		if (titanMember?.giftingCooldown) {
-			const now = Date.now();
-
-			if (now < titanMember.giftingCooldown.getTime()) {
-				await interaction.reply({
-					embeds: [
-						createInfoEmbed(
-							`You'll be able to gift or transfer the Legend Subscription ${time(titanMember.giftingCooldown, TimestampStyles.RelativeTime)}`,
-						),
-					],
-					ephemeral: true,
-				});
-
-				return;
-			}
-		}
-
-		// If they haven't gifted a role before, we can just gift it
-		if (!titanMember?.giftedRoleToUserId) {
-			try {
-				await targetMember.roles.add(guildConfig.giftableRoleId, `Gifted by a Titan (${interaction.user.tag})`);
-			} catch (error) {
-				this.container.logger.error(`Failed to gift role to user`, {
-					userId: interaction.user.id,
-					guildId: interaction.guildId,
-					error,
-				});
-
-				await interaction.reply({
-					embeds: [
-						createInfoEmbed(
-							'I was unable to gift the role to the user. Please try again later, and if this error persists, contact the admins.',
-						),
-					],
-					ephemeral: true,
-				});
-
-				return;
-			}
-
-			await this.container.prisma.titanMember.upsert({
-				where: { guildId_userId: { guildId: interaction.guildId, userId: interaction.user.id } },
-				update: { giftedRoleToUserId: user.id, giftingCooldown: new Date(Date.now() + thirtyMinutes) },
-				create: {
-					guildId: interaction.guildId,
-					userId: interaction.user.id,
-					giftedRoleToUserId: user.id,
-					giftingCooldown: new Date(Date.now() + thirtyMinutes),
-				},
-			});
-
-			await interaction.reply({
-				embeds: [
-					createInfoEmbed(
-						`You have successfully gifted a Legend Subscription to ${user.toString()}.\n\nUse the command again to switch the Legend role to a different user. You can only gift one Legend role at a time.`,
-					),
-				],
-				ephemeral: true,
-			});
-
-			return;
-		}
-
-		const previousGiftedMember = await interaction.guild.members
-			.fetch(titanMember.giftedRoleToUserId)
-			.catch(() => null);
-
-		if (previousGiftedMember?.id === user.id) {
-			await interaction.reply({
-				embeds: [createInfoEmbed('You have already gifted the Legend Subscription to this user.')],
-				ephemeral: true,
-			});
-
-			return;
-		}
-
-		await interaction.reply({
-			embeds: [
-				createInfoEmbed(
-					`Are you sure you want to switch the gifted subscription from ${previousGiftedMember?.user.toString() ?? 'nobody'} to ${user.toString()}?`,
-				),
-			],
-			ephemeral: true,
-			components: [
-				new ActionRowBuilder<ButtonBuilder>().addComponents(
-					new ButtonBuilder()
-						.setCustomId(makeTitanRoleGiftSwitchId(interaction.user.id, targetMember.id, 'confirm'))
-						.setStyle(ButtonStyle.Success)
-						.setLabel('Confirm')
-						.setEmoji('✅'),
-
-					new ButtonBuilder()
-						.setCustomId(makeTitanRoleGiftSwitchId(interaction.user.id, targetMember.id, 'cancel'))
-						.setStyle(ButtonStyle.Secondary)
-						.setLabel('Cancel')
-						.setEmoji('❌'),
-				),
-			],
-		});
 	}
 
 	public override registerApplicationCommands(registry: Subcommand.Registry) {
 		registry.registerChatInputCommand((builder) =>
 			builder
 				.setName(this.name)
-				.setDescription('Manage your custom Titan role.')
+				.setDescription('Manage your premium custom role.')
 				.setDMPermission(false)
 				.addSubcommand((subcommand) =>
 					subcommand
 						.setName('edit')
-						.setDescription('Edits your custom Titan role.')
+						.setDescription('Edits your premium custom role.')
 						.addStringOption((name) =>
 							name
 								.setName('name')
@@ -510,18 +382,7 @@ export class TitanRoleCommand extends Subcommand {
 						),
 				)
 				.addSubcommand((subcommand) =>
-					subcommand.setName('toggle').setDescription('Toggles the visibility of your custom Titan role.'),
-				)
-				.addSubcommand((subcommand) =>
-					subcommand
-						.setName('gift-legend')
-						.setDescription('Gifts a Legend Subscription to someone')
-						.addUserOption((user) =>
-							user
-								.setName('user')
-								.setDescription('The user to gift the subscription to')
-								.setRequired(true),
-						),
+					subcommand.setName('toggle').setDescription('Toggles the visibility of your premium custom role.'),
 				),
 		);
 	}
@@ -551,14 +412,14 @@ export class TitanRoleCommand extends Subcommand {
 			return null;
 		}
 
-		this.container.logger.info(`[TITAN] Trying to resolve icon for custom Titan role`, { url });
+		this.container.logger.info(`[PREMIUM] Trying to resolve icon for premium custom role`, { url });
 
 		let res: Response;
 
 		try {
 			res = await fetch(url);
 		} catch (error) {
-			this.container.logger.warn(`Failed to fetch icon for custom Titan role`, {
+			this.container.logger.warn(`Failed to fetch icon for premium custom role`, {
 				url,
 				error,
 			});
@@ -567,7 +428,7 @@ export class TitanRoleCommand extends Subcommand {
 		}
 
 		if (!res.ok) {
-			this.container.logger.warn(`Failed to fetch icon for custom Titan role`, {
+			this.container.logger.warn(`Failed to fetch icon for premium custom role`, {
 				url,
 				status: res.status,
 				statusText: res.statusText,
@@ -586,7 +447,7 @@ export class TitanRoleCommand extends Subcommand {
 			return uint8;
 		}
 
-		this.container.logger.info(`[TITAN] Invalid icon format for custom Titan role`, { url, exts });
+		this.container.logger.info(`[PREMIUM] Invalid icon format for premium custom role`, { url, exts });
 
 		return null;
 	}

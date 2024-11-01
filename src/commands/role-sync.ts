@@ -5,7 +5,7 @@ import { Subcommand, type SubcommandMappingArray } from '@sapphire/plugin-subcom
 import { chunk } from '@sapphire/utilities';
 import { PermissionFlagsBits } from 'discord-api-types/v10';
 import type { ApplicationCommandOptionChoiceData, Guild } from 'discord.js';
-import { createInfoEmbed } from '../lib/utils/createInfoEmbed.js';
+import { createInfoEmbed } from '../lib/utils/createEmbed.js';
 import { trimPretty } from '../lib/utils/trim.js';
 
 @ApplyOptions<Subcommand.Options>({

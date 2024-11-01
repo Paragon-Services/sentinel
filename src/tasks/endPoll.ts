@@ -1,7 +1,7 @@
 import { Result } from '@sapphire/framework';
 import type { GuildTextBasedChannel } from 'discord.js';
 import { Task, type TaskRunData } from '../lib/schedule/tasks/Task.js';
-import { createInfoEmbed } from '../lib/utils/createInfoEmbed.js';
+import { createInfoEmbed } from '../lib/utils/createEmbed.js';
 import { generatePollEmbedDescription } from '../lib/utils/polls/generatePollEmbed.js';
 import { fetchReadableUser } from '../lib/utils.js';
 

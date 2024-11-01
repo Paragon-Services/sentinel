@@ -6,7 +6,7 @@ import { Subcommand, type SubcommandMappingArray } from '@sapphire/plugin-subcom
 import { Duration, Time } from '@sapphire/time-utilities';
 import { ChannelType, PermissionFlagsBits } from 'discord-api-types/v10';
 import { AttachmentBuilder, type GuildTextBasedChannel } from 'discord.js';
-import { createInfoEmbed } from '../lib/utils/createInfoEmbed.js';
+import { createInfoEmbed } from '../lib/utils/createEmbed.js';
 import { durationFormat } from '../lib/utils.js';
 
 @ApplyOptions<Subcommand.Options>({
