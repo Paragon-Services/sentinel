@@ -215,7 +215,7 @@ export class ClanManager {
 			return;
 		}
 
-		return new ClanManager(await channel.guild.members.fetch(premiumMember.userId));
+		return new ClanManager(premiumMember.userId, channel.guildId);
 	}
 
 	public async getClanCategory(): Promise<CategoryChannel | undefined> {
