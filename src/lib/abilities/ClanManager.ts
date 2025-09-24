@@ -758,6 +758,7 @@ export class ClanManager {
 				ManageChannels: true,
 				ManageMessages: true,
 				CreatePrivateThreads: true,
+				MentionEveryone: true,
 			})
 			.catch((error) => {
 				errorHappened = true;
