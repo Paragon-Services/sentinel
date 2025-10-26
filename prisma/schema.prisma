@@ -272,6 +272,7 @@ model Clan {
   deletionTaskId  Int?
   
   description     String?
+  isVisibleInDirectory Boolean      @default(true)
 
   @@id([guildId, customRoleId])
   @@map("clan")
