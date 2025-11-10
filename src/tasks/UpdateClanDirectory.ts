@@ -20,7 +20,7 @@ const SEPARATOR = '<:valBlank:806719192191336448>';
 const FALLBACK_ICON = '<:icon_Titan:1181684178467696680>'; // Titan fallback emoji
 
 // Application ID for emoji uploads
-const APPLICATION_ID = process.env.DISCORD_APPLICATION_ID!;
+const APPLICATION_ID = "1107437965233369118";
 
 export class UpdateClanDirectory extends Task {
 	public async run() {
