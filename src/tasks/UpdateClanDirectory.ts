@@ -7,9 +7,7 @@ import { Task } from '../lib/schedule/tasks/Task.js';
 import { createInfoEmbed } from '../lib/utils/createEmbed.js';
 
 const header = '[CLAN DIRECTORY] ';
-
-
-const clansPerPage = 10;
+const clansPerPage = 10; 
 
 // Emojis and icons
 const CONNECTION1 = '<:ConnectionContinuing:1436843068438351944>';
@@ -19,7 +17,7 @@ const FALLBACK_ICON = '<:icon_Titan:1181684178467696680>';
 
 export class UpdateClanDirectory extends Task {
 	public async run() {
-		this.container.logger.info(`${header}Starting clan directory update (TEST MODE: 1 per embed)...`);
+		this.container.logger.info(`${header}Starting clan directory update...`);
 
 		const visibleClans = await this.container.prisma.clan.findMany({
 			where: { isVisibleInDirectory: true },
@@ -101,34 +99,35 @@ export class UpdateClanDirectory extends Task {
 
 			for (let i = 0; i < allClansData.length; i += clansPerPage) {
 				const chunk = allClansData.slice(i, i + clansPerPage);
-				const data = chunk[0];
-				if (!data) continue;
-
-				const emoji = emojiMap.get(data.customRoleId);
-				const roleIcon = emoji ? `<:${emoji.name}:${emoji.id}>` : FALLBACK_ICON;
-				const ownerMention = data.ownerId ? `<@${data.ownerId}>` : '`Unknown Owner`';
-				const descriptionText = data.description || '*No description set*';
-
 				const embed = new EmbedBuilder().setColor(0x27272f);
 
-				// Add header & thumbnail only to first embed
+				// Add heading and thumbnail only to the first embed
 				if (i === 0) {
 					embed
 						.setDescription(`## ${guild.name} Clan Discovery\n${SEPARATOR}`)
 						.setThumbnail(guild.iconURL({ extension: 'png', size: 128 }) ?? null);
 				}
 
-				embed.addFields({
-					name: `${roleIcon}  ${data.name}`,
-					value: [
-						`-# ${CONNECTION1} Owner: ${ownerMention}`,
-						`-# ${CONNECTION1} Members: \`${data.memberCount}\` / ${MAX_MEMBERS_IN_CLAN}`,
-						`-# ${CONNECTION2} Description: ${descriptionText}`,
-					].join('\n'),
-					inline: false,
-				});
+				for (const data of chunk) {
+					const emoji = emojiMap.get(data.customRoleId);
+					const roleIcon = emoji ? `<:${emoji.name}:${emoji.id}>` : FALLBACK_ICON;
+					const ownerMention = data.ownerId ? `<@${data.ownerId}>` : '`Unknown Owner`';
+					const descriptionText = data.description || '*No description set*';
 
-				// Add footer only on the last embed
+					embed.addFields({
+						name: `${roleIcon}  ${data.name}`,
+						value: [
+							`-# ${CONNECTION1} Owner: ${ownerMention}`,
+							`-# ${CONNECTION1} Members: \`${data.memberCount}\` / ${MAX_MEMBERS_IN_CLAN}`,
+							`-# ${CONNECTION2} Description: ${descriptionText}`,
+						].join('\n'),
+						inline: false,
+					});
+
+					embed.addFields({ name: ' ', value: SEPARATOR, inline: false });
+				}
+
+				// Add footer only to the final embed
 				if (i + clansPerPage >= allClansData.length) {
 					embed.addFields({
 						name: ' ',
