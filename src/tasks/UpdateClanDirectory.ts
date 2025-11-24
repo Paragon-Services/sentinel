@@ -8,7 +8,7 @@ import { createInfoEmbed } from '../lib/utils/createEmbed.js';
 
 const header = '[CLAN DIRECTORY] ';
 const MAX_EMBEDS_PER_MESSAGE = 10;
-const MAX_FIELDS_PER_EMBED = 25; // Safe check to avoid API error
+const MAX_FIELDS_PER_EMBED = 25; // Safe check
 
 // Emojis and icons
 const CONNECTION1 = '<:ConnectionContinuing:1436843068438351944>';
@@ -142,7 +142,7 @@ export class UpdateClanDirectory extends Task {
 			if (fieldCount > 0) {
 				currentEmbed.addFields({
 					name: ' ',
-					value: `-# Request to join a clan with \`/clan join\`. \nWant to create a clan? Check out our [**server subscriptions!**](https://discord.com/channels/679875946597056683/shop) (desktop only)`,
+					value: `-# Request to join a clan with \`/clan join\`. \n-# Want to create a clan? Check out our [**server subscriptions!**](https://discord.com/channels/679875946597056683/shop) (desktop only)`,
 					inline: false,
 				});
 				embeds.push(currentEmbed);
@@ -156,7 +156,7 @@ export class UpdateClanDirectory extends Task {
 						.setThumbnail(guild.iconURL({ extension: 'png', size: 128 }) ?? null)
 						.addFields({
 							name: ' ',
-							value: `-# Request to join a clan with \`/clan join\`. \nWant to create a clan? Check out our [**server subscriptions!**](https://discord.com/channels/679875946597056683/shop) (desktop only)`,
+							value: `-# Request to join a clan with \`/clan join\`. Want to create a clan? Check out our [**server subscriptions!**](https://discord.com/channels/679875946597056683/shop) (desktop only)`,
 							inline: false,
 						}),
 				);
