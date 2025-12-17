@@ -44,6 +44,10 @@ export class ReadyEvent extends Listener {
 			if (!client.schedule.queue.some((task) => task.taskID === 'UpdateClanDirectory')) {
 				await client.schedule.add('UpdateClanDirectory', '*/5 * * * *');
 			}
+
+			if (!client.schedule.queue.some((task) => task.taskID === 'checkPremiumMemberAbilities')) {
+				await client.schedule.add('checkPremiumMemberAbilities', '0 10 * * *');
+			}
 		} catch (error) {
 			client.emit('wtf', error);
 		}

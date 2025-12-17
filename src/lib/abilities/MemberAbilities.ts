@@ -1,4 +1,5 @@
 import type { GuildMember } from 'discord.js';
+import { ensureFullMember } from '../utils.js';
 import type { RoleAbilities, RoleAbility } from './RoleAbilities.js';
 import { RoleAbilitiesCalculator } from './RoleAbilities.js';
 
@@ -25,9 +26,12 @@ export class MemberAbilities {
 	public async computeAbilities() {
 		await this.roleAbilities.computeList();
 
+		// Ensure member is fully hydrated before accessing roles
+		const fullMember = await ensureFullMember(this.member);
+
 		const hasPremiumRole = this.roleAbilities
 			.getAllPremiumRoleIds()
-			.some((roleId) => this.member.roles.cache.has(roleId));
+			.some((roleId) => fullMember.roles.cache.has(roleId));
 
 		if (!hasPremiumRole) {
 			this.abilitiesComputed = true;
@@ -35,7 +39,7 @@ export class MemberAbilities {
 		}
 
 		// eslint-disable-next-line unicorn/consistent-function-scoping
-		const hasRole = (roleId: string) => this.member.roles.cache.has(roleId);
+		const hasRole = (roleId: string) => fullMember.roles.cache.has(roleId);
 
 		this.abilities.canCreateClan = this.roleAbilities.getPremiumRoleIds('canCreateClan').some(hasRole);
 		this.abilities.canCreateCustomRole = this.roleAbilities.getPremiumRoleIds('canCreateCustomRole').some(hasRole);

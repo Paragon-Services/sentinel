@@ -25,6 +25,7 @@ import {
 	MAX_MEMBERS_IN_CLAN,
 } from '../../../lib/abilities/ClanManager.js';
 import { MemberAbilities } from '../../../lib/abilities/MemberAbilities.js';
+import { ensureFullMember } from '../../../lib/utils.js';
 import { createErrorEmbed, createInfoEmbed } from '../../../lib/utils/createEmbed.js';
 import { waitForButtonConfirm } from '../../../lib/utils/waitForInteraction.js';
 import { trimPretty } from '../../../lib/utils/trim.js';
@@ -663,6 +664,7 @@ export class ClanCommand extends Subcommand {
 
 	public async claimRoleSubcommand(interaction: Subcommand.ChatInputCommandInteraction<'cached'>) {
 		await interaction.deferReply({ ephemeral: true });
+		await ensureFullMember(interaction.member);
 
 		if (interaction.channel?.type !== ChannelType.GuildText) {
 			await interaction.editReply({
@@ -719,6 +721,7 @@ export class ClanCommand extends Subcommand {
 
 	public async unclaimRoleSubcommand(interaction: Subcommand.ChatInputCommandInteraction<'cached'>) {
 		await interaction.deferReply({ ephemeral: true });
+		await ensureFullMember(interaction.member);
 
 		if (interaction.channel?.type !== ChannelType.GuildText) {
 			await interaction.editReply({

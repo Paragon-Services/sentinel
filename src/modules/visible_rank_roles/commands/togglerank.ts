@@ -2,6 +2,7 @@ import { RoleSyncType } from '@prisma/client';
 import { ApplyOptions } from '@sapphire/decorators';
 import { Command } from '@sapphire/framework';
 import { type Message, type TextChannel } from 'discord.js';
+import { ensureFullMember } from '../../../lib/utils.js';
 import { createInfoEmbed } from '../../../lib/utils/createEmbed.js';
 
 @ApplyOptions<Command.Options>({
@@ -44,7 +45,7 @@ export class ToggleRankCommand extends Command {
 			},
 		});
 
-		const member = await interaction.guild.members.fetch(interaction.user.id);
+		const member = await ensureFullMember(await interaction.guild.members.fetch(interaction.user.id));
 
 		for (const { origin_role_id: mainRankRole, destination_role_id: visibleRankRole } of roles) {
 			const hasMainRole = member.roles.cache.has(mainRankRole);

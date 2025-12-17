@@ -4,6 +4,7 @@ import { Duration } from '@sapphire/time-utilities';
 import { ChannelType } from 'discord-api-types/v10';
 import type {CategoryChannel, Guild, GuildMember, NonThreadGuildBasedChannel, Role, TextChannel} from 'discord.js';
 import { Collection } from 'discord.js';
+import { ensureFullMember } from '../utils.js';
 import { MemberAbilities } from './MemberAbilities.js';
 
 export const MAX_MEMBERS_IN_CLAN = 40;
@@ -468,11 +469,14 @@ export class ClanManager {
 		const discordClanMembers = await this.getDiscordClanMembers();
 
 		for (const member of discordClanMembers.values()) {
-			if (!member.roles.cache.has(clan.customRoleId)) {
+			// Ensure member is fully hydrated before accessing roles
+			const fullMember = await ensureFullMember(member);
+
+			if (!fullMember.roles.cache.has(clan.customRoleId)) {
 				continue;
 			}
 
-			await member.roles.remove(clan.customRoleId);
+			await fullMember.roles.remove(clan.customRoleId);
 		}
 
 		await container.prisma.clanMember.deleteMany({
@@ -679,8 +683,11 @@ export class ClanManager {
 		const clanMembers = await this.getDiscordClanMembers();
 		const clanChannel = await this.getClanChannel();
 
-		if (premiumMember?.customRoleId && member.roles.cache.has(premiumMember.customRoleId)) {
-			await member.roles.remove(premiumMember.customRoleId);
+		// Ensure member is fully hydrated before accessing roles
+		const fullMember = await ensureFullMember(member);
+
+		if (premiumMember?.customRoleId && fullMember.roles.cache.has(premiumMember.customRoleId)) {
+			await fullMember.roles.remove(premiumMember.customRoleId);
 		}
 
 		await clanChannel?.permissionOverwrites.delete(member.id);

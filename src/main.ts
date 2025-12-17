@@ -44,7 +44,7 @@ const client = new UtilsBot({
 		IntentsBitField.Flags.DirectMessages,
 		IntentsBitField.Flags.MessageContent,
 	]),
-	partials: [Partials.Channel, Partials.Message],
+	partials: [Partials.Channel, Partials.Message, Partials.GuildMember],
 	caseInsensitiveCommands: true,
 	loadMessageCommandListeners: true,
 	logger: {

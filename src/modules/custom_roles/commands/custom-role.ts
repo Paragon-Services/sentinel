@@ -6,6 +6,7 @@ import magicBytes from 'magic-bytes.js';
 import { ClanDeletionStatus, ClanManager } from '../../../lib/abilities/ClanManager.js';
 import { MemberAbilities } from '../../../lib/abilities/MemberAbilities.js';
 import { RoleAbilitiesCalculator } from '../../../lib/abilities/RoleAbilities.js';
+import { ensureFullMember } from '../../../lib/utils.js';
 import { createErrorEmbed, createInfoEmbed } from '../../../lib/utils/createEmbed.js';
 import { waitForButtonConfirm } from '../../../lib/utils/waitForInteraction.js';
 
@@ -50,6 +51,8 @@ export class CustomRoleCommand extends Subcommand {
 	];
 
 	public async editSubcommand(interaction: Subcommand.ChatInputCommandInteraction<'cached'>) {
+		await ensureFullMember(interaction.member);
+
 		const guildConfig = await this.container.prisma.premiumGuildRoleConfig.findFirst({
 			where: { guildId: interaction.guildId },
 		});
@@ -297,6 +300,8 @@ export class CustomRoleCommand extends Subcommand {
 	}
 
 	public async toggleSubcommand(interaction: Subcommand.ChatInputCommandInteraction<'cached'>) {
+		await ensureFullMember(interaction.member);
+
 		const roleAbilitiesCalculator = new RoleAbilitiesCalculator(interaction.guild.id);
 		const memberAbilities = new MemberAbilities(interaction.member);
 

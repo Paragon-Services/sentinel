@@ -2,10 +2,13 @@ import { ApplyOptions } from '@sapphire/decorators';
 import { Events, Listener } from '@sapphire/framework';
 import type { GuildMember } from 'discord.js';
 import { ClanManager } from '../../../lib/abilities/ClanManager.js';
+import { ensureFullMember } from '../../../lib/utils.js';
 
 @ApplyOptions<Listener.Options>({ event: Events.GuildMemberAdd })
 export class GuildMemberComesBack extends Listener<typeof Events.GuildMemberAdd> {
 	public override async run(member: GuildMember) {
+		await ensureFullMember(member);
+
 		const clanManager = new ClanManager(member);
 		const clan = await clanManager.getClan();
 

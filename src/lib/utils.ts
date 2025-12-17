@@ -1,7 +1,7 @@
 import { container } from '@sapphire/framework';
 import { DurationFormatter, Timestamp } from '@sapphire/time-utilities';
-import { Message } from 'discord.js';
-import type { User, GatewayMessageCreateDispatchData, Interaction } from 'discord.js';
+import { Message, type PartialGuildMember } from 'discord.js';
+import type { User, GatewayMessageCreateDispatchData, Interaction, GuildMember } from 'discord.js';
 
 export const timeFormat = new Timestamp('YYYY-MM-DD [at] HH:mm:ss [UTC]');
 
@@ -16,13 +16,28 @@ export async function fetchReadableUser(id: string) {
 	return toReadableUser(user);
 }
 
+/**
+ * Ensures that a GuildMember is fully hydrated (not partial).
+ * If the member is partial, fetches the full member data.
+ *
+ * @param member - The guild member to ensure is fully hydrated
+ * @returns A promise that resolves to the full guild member
+ */
+export async function ensureFullMember(member: GuildMember | PartialGuildMember): Promise<GuildMember> {
+	if (member.partial) {
+		return member.fetch();
+	}
+
+	return member;
+}
+
 export async function getMemberFromInteraction(interaction: Interaction) {
 	if (!interaction.inCachedGuild()) {
 		return null;
 	}
 
 	const { guild } = interaction;
-	const { member } = interaction;
+	const member = await ensureFullMember(interaction.member);
 
 	return guild.members.fetch({ user: member.user.id });
 }
