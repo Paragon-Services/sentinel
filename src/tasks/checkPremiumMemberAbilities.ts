@@ -1,3 +1,4 @@
+import { ClanManager } from '../lib/abilities/ClanManager.js';
 import { MemberAbilities } from '../lib/abilities/MemberAbilities.js';
 import { Task, type TaskRunData } from '../lib/schedule/tasks/Task.js';
 
@@ -30,6 +31,93 @@ export class CheckPremiumMemberAbilities extends Task {
 		const options: CheckPremiumMemberAbilitiesOptions = data?.data ? JSON.parse(data.data) : {};
 		await this.checkAbilities(options);
 		return null;
+	}
+
+	/**
+	 * Cleans up a premium member who lost their abilities:
+	 * - Checks for clan and deletes it immediately if not already orphaned
+	 * - Deletes custom role from Discord
+	 * - Deletes premium member entry from database
+	 */
+	private async cleanupPremiumMember(
+		guildId: string,
+		userId: string,
+		customRoleId: string | null,
+		guildName: string,
+		reason: 'mismatch' | 'missing',
+	): Promise<void> {
+		const guild = this.container.client.guilds.resolve(guildId);
+		if (!guild) return;
+
+		let shouldDeleteCustomRole = false;
+
+		if (customRoleId) {
+			const clanManager = new ClanManager(customRoleId, guildId);
+			const clan = await clanManager.getClan();
+
+			if (clan) {
+				if (clan.deletionTaskId) {
+					this.container.logger.info(
+						`[PREMIUM ABILITY CHECK] [CLEANUP] Clan for role ${customRoleId} is already orphaned, skipping`,
+					);
+				} else {
+					try {
+						await clanManager.deleteClan();
+						this.container.logger.info(
+							`[PREMIUM ABILITY CHECK] [CLEANUP] Deleted clan for role ${customRoleId} for ${reason} user ${userId}`,
+						);
+						shouldDeleteCustomRole = true;
+					} catch (error) {
+						this.container.logger.error(
+							`[PREMIUM ABILITY CHECK] [CLEANUP] Failed to delete clan for role ${customRoleId}:`,
+							error,
+						);
+						shouldDeleteCustomRole = true;
+					}
+				}
+			} else {
+				shouldDeleteCustomRole = true;
+			}
+		}
+
+		if (customRoleId && shouldDeleteCustomRole) {
+			const role = await guild.roles.fetch(customRoleId).catch(() => null);
+
+			if (role) {
+				try {
+					await role.delete(`Premium member ${reason}: user ${userId} lost abilities`);
+					this.container.logger.info(
+						`[PREMIUM ABILITY CHECK] [CLEANUP] Deleted custom role ${customRoleId} for ${reason} user ${userId}`,
+					);
+				} catch (error) {
+					this.container.logger.error(
+						`[PREMIUM ABILITY CHECK] [CLEANUP] Failed to delete custom role ${customRoleId}:`,
+						error,
+					);
+				}
+			}
+		}
+
+		// 3. Delete premium member entry from database
+		try {
+			await this.container.prisma.premiumMember.delete({
+				where: {
+					guildId_userId: {
+						guildId,
+						userId,
+					},
+				},
+			});
+
+			this.container.logger.info(
+				`[PREMIUM ABILITY CHECK] [FIXED] Removed premium member entry for ${reason} user ${userId} in guild ${guildName} (${guildId})`,
+			);
+		} catch (error) {
+			this.container.logger.error(
+				`[PREMIUM ABILITY CHECK] Failed to remove premium member ${userId} in guild ${guildId}:`,
+				error,
+			);
+		}
 	}
 
 	public async checkAbilities(
@@ -85,25 +173,14 @@ export class CheckPremiumMemberAbilities extends Task {
 
 					// Fix missing members if mode is 'fix-missing' or 'fix-all'
 					if (fixMode === 'fix-missing' || fixMode === 'fix-all') {
-						try {
-							await this.container.prisma.premiumMember.delete({
-								where: {
-									guildId_userId: {
-										guildId: premiumMember.guildId,
-										userId: premiumMember.userId,
-									},
-								},
-							});
-							fixed++;
-							this.container.logger.info(
-								`[PREMIUM ABILITY CHECK] [FIXED MISSING] Removed premium member entry for missing user ${premiumMember.userId} in guild ${guild.name} (${guild.id})`,
-							);
-						} catch (error) {
-							this.container.logger.error(
-								`[PREMIUM ABILITY CHECK] Failed to remove missing premium member ${premiumMember.userId} in guild ${premiumMember.guildId}:`,
-								error,
-							);
-						}
+						await this.cleanupPremiumMember(
+							premiumMember.guildId,
+							premiumMember.userId,
+							premiumMember.customRoleId,
+							guild.name,
+							'missing',
+						);
+						fixed++;
 					}
 
 					continue;
@@ -133,25 +210,14 @@ export class CheckPremiumMemberAbilities extends Task {
 
 					// Fix mismatches if mode is 'fix-mismatches' or 'fix-all'
 					if (fixMode === 'fix-mismatches' || fixMode === 'fix-all') {
-						try {
-							await this.container.prisma.premiumMember.delete({
-								where: {
-									guildId_userId: {
-										guildId: premiumMember.guildId,
-										userId: premiumMember.userId,
-									},
-								},
-							});
-							fixed++;
-							this.container.logger.info(
-								`[PREMIUM ABILITY CHECK] [FIXED] Removed premium member entry for user ${member.user.tag} (${premiumMember.userId}) in guild ${guild.name} (${guild.id})`,
-							);
-						} catch (error) {
-							this.container.logger.error(
-								`[PREMIUM ABILITY CHECK] Failed to remove premium member ${premiumMember.userId} in guild ${premiumMember.guildId}:`,
-								error,
-							);
-						}
+						await this.cleanupPremiumMember(
+							premiumMember.guildId,
+							premiumMember.userId,
+							premiumMember.customRoleId,
+							guild.name,
+							'mismatch',
+						);
+						fixed++;
 					}
 				}
 			} catch (error) {

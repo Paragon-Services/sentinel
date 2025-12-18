@@ -53,9 +53,13 @@ type CacheType = 'clan' | 'clanChannel' | 'clanMembers' | 'customRole' | 'premiu
 export class ClanManager {
 	private readonly guildId: string;
 
-	private readonly userId: string;
+	private readonly userOrCustomRoleId?: string;
 
 	private readonly guild: Guild;
+
+	private userId?: string;
+
+	private customRoleId?: string;
 
 	private premiumMember?: PremiumMember | null;
 
@@ -70,18 +74,19 @@ export class ClanManager {
 	private discordClanMembers?: Collection<string, GuildMember> | null;
 
 	public constructor(userId: string, guildId: string);
+	public constructor(customRoleId: string, guildId: string);
 	public constructor(member: GuildMember);
-	public constructor(memberOrUserId: GuildMember | string, guildId?: string) {
-		if (typeof memberOrUserId === 'string' && !guildId) {
+	public constructor(memberOrId: GuildMember | string, guildId?: string) {
+		if (typeof memberOrId === 'string' && !guildId) {
 			throw new Error('Guild ID is required if memberOrUserId is a user ID');
 		}
 
-		if (typeof memberOrUserId === 'string') {
-			this.userId = memberOrUserId;
+		if (typeof memberOrId === 'string') {
+			this.userOrCustomRoleId = memberOrId;
 			this.guildId = guildId!;
 		} else {
-			this.userId = memberOrUserId.id;
-			this.guildId = memberOrUserId.guild.id;
+			this.userId = memberOrId.id;
+			this.guildId = memberOrId.guild.id;
 		}
 
 		this.guild = container.client.guilds.cache.get(this.guildId)!;
@@ -234,7 +239,7 @@ export class ClanManager {
 		);
 	}
 
-	public getClanOwnerId(): string {
+	public getClanOwnerId(): string | undefined {
 		return this.userId;
 	}
 
@@ -256,7 +261,7 @@ export class ClanManager {
 	public async canCreateClan(): Promise<ClanCreationAbilityStatus> {
 		const customRoleId = await this.getCustomRoleId();
 
-		const member = await this.guild.members.fetch(this.userId).catch(() => null);
+		const member = await this.guild.members.fetch(this.getClanOwnerId() ?? '').catch(() => null);
 
 		if (!member) {
 			return ClanCreationAbilityStatus.MemberNotFound;
@@ -438,7 +443,7 @@ export class ClanManager {
 			data: {
 				clanGuildId: clan!.guildId,
 				clanCustomRoleId: clan!.customRoleId,
-				userId: this.userId,
+				userId: this.getClanOwnerId()!,
 				claimedRole: true,
 			},
 		});
@@ -469,14 +474,11 @@ export class ClanManager {
 		const discordClanMembers = await this.getDiscordClanMembers();
 
 		for (const member of discordClanMembers.values()) {
-			// Ensure member is fully hydrated before accessing roles
-			const fullMember = await ensureFullMember(member);
-
-			if (!fullMember.roles.cache.has(clan.customRoleId)) {
+			if (!member.roles.cache.has(clan.customRoleId)) {
 				continue;
 			}
 
-			await fullMember.roles.remove(clan.customRoleId);
+			await member.roles.remove(clan.customRoleId);
 		}
 
 		await container.prisma.clanMember.deleteMany({
@@ -520,7 +522,7 @@ export class ClanManager {
 	public async makeClanNotOrphan(): Promise<void> {
 		await this.getClan();
 
-		if (!this.clan?.deletionTaskId) {
+		if (!this.clan?.deletionTaskId || !this.getClanOwnerId()) {
 			return;
 		}
 
@@ -531,11 +533,11 @@ export class ClanManager {
 			data: { deletionTaskId: null },
 		});
 
-		const clanMemberAddStatus = await this.inviteMember(this.userId, true);
+		const clanMemberAddStatus = await this.inviteMember(this.getClanOwnerId()!, true);
 
 		if (clanMemberAddStatus !== ClanMemberAddStatus.Added) {
 			container.logger.error(
-				`[CLAN ${this.userId}] Could not add owner back: `,
+				`[CLAN ${this.getClanOwnerId()!}] Could not add owner back: `,
 				ClanManager.getMemberAddStatusMessage(clanMemberAddStatus),
 			);
 
@@ -545,14 +547,14 @@ export class ClanManager {
 		const channel = await this.getClanChannel();
 
 		if (!channel) {
-			container.logger.error(`[CLAN ${this.userId}] Clan channel does not seem to exist anymore.`);
+			container.logger.error(`[CLAN ${this.getClanOwnerId()!}] Clan channel does not seem to exist anymore.`);
 
 			return;
 		}
 
-		await this.giveOwnerPermissions(channel, this.userId).catch((error: Error) => {
+		await this.giveOwnerPermissions(channel, this.getClanOwnerId()!).catch((error: Error) => {
 			container.logger.error(
-				`[CLAN ${this.userId}] Restoring clan channel permissions setting for owner failed: `,
+				`[CLAN ${this.getClanOwnerId()!}] Restoring clan channel permissions setting for owner failed: `,
 				error,
 			);
 		});
@@ -561,7 +563,7 @@ export class ClanManager {
 	public async deleteOrphanClan(): Promise<void> {
 		const clan = await this.getClan();
 
-		if (!clan?.deletionTaskId) {
+		if (!clan?.deletionTaskId || !this.getClanOwnerId()) {
 			return;
 		}
 
@@ -587,7 +589,7 @@ export class ClanManager {
 			}
 
 			await container.prisma.premiumMember.update({
-				where: { guildId_userId: { guildId: this.guildId, userId: this.userId } },
+				where: { guildId_userId: { guildId: this.guildId, userId: this.getClanOwnerId()! } },
 				data: { customRoleId: null },
 			});
 		}
@@ -609,7 +611,7 @@ export class ClanManager {
 			}
 
 			await container.prisma.premiumMember.update({
-				where: { guildId_userId: { guildId: this.guildId, userId: this.userId } },
+				where: { guildId_userId: { guildId: this.guildId, userId: this.getClanOwnerId()! } },
 				data: { giftedRoleToUserId: null },
 			});
 		}
@@ -704,9 +706,13 @@ export class ClanManager {
 	}
 
 	public async getCustomRoleId(): Promise<string | undefined> {
-		const premiumMember = await this.getPremiumMember();
+		if (!this.customRoleId) {
+			const premiumMember = await this.getPremiumMember();
 
-		return premiumMember?.customRoleId ?? undefined;
+			this.customRoleId = premiumMember?.customRoleId ?? this.userOrCustomRoleId;
+		}
+
+		return this.customRoleId;
 	}
 
 	public invalidateCache(type: CacheType): void {
@@ -720,7 +726,7 @@ export class ClanManager {
 	private async createClanChannel(): Promise<TextChannel | undefined> {
 		const customRole = await this.getCustomRole();
 
-		if (!customRole) {
+		if (!customRole || !this.getClanOwnerId()) {
 			return;
 		}
 
@@ -772,7 +778,7 @@ export class ClanManager {
 				);
 			});
 
-		await this.giveOwnerPermissions(clanChannel, this.userId).catch((error: Error) => {
+		await this.giveOwnerPermissions(clanChannel, this.getClanOwnerId()!).catch((error: Error) => {
 			errorHappened = true;
 			container.logger.info(`[CLAN ${this.userId}] Clan channel permissions setting for owner failed: `, error);
 		});
@@ -798,8 +804,16 @@ export class ClanManager {
 	private async getPremiumMember(): Promise<PremiumMember | null> {
 		if (this.premiumMember === undefined) {
 			this.premiumMember = await container.prisma.premiumMember.findFirst({
-				where: { guildId: this.guildId, userId: this.userId },
+				where: { guildId: this.guildId, userId: this.getClanOwnerId() ?? this.userOrCustomRoleId },
 			});
+		}
+
+		if (!this.userId && this.premiumMember?.userId === this.userOrCustomRoleId) {
+			this.userId = this.userOrCustomRoleId;
+		}
+
+		if (!this.customRoleId && this.premiumMember?.customRoleId === this.userOrCustomRoleId) {
+			this.customRoleId = this.userOrCustomRoleId;
 		}
 
 		return this.premiumMember;
