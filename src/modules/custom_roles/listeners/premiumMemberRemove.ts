@@ -15,11 +15,21 @@ export class GuildMemberRemove extends Listener<typeof Events.GuildMemberRemove>
 		});
 
 		const clanManager = new ClanManager(member);
-
-		await clanManager.getClan();
-		await clanManager.makeClanOrphan();
-
+		const clan = await clanManager.getClan();
 		const customRoleId = await clanManager.getCustomRoleId();
+
+		if (clan) {
+			await clanManager.makeClanOrphan();
+		} else {
+			const premiumMember = await this.container.prisma.premiumMember.findFirst({
+				where: { guildId: member.guild.id, userId: member.id },
+			});
+
+			if (premiumMember) {
+				await ClanManager.deletePremiumRole(premiumMember);
+				await ClanManager.deleteGiftedRole(premiumMember);
+			}
+		}
 
 		await this.container.prisma.clanMember.deleteMany({
 			where: {
