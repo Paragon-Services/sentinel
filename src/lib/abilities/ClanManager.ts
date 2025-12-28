@@ -213,15 +213,7 @@ export class ClanManager {
 			return;
 		}
 
-		const premiumMember = await container.prisma.premiumMember.findFirst({
-			where: { guildId: channel.guild.id, customRoleId: clan.customRoleId },
-		});
-
-		if (!premiumMember) {
-			return;
-		}
-
-		return new ClanManager(premiumMember.userId, channel.guildId);
+		return new ClanManager(clan.customRoleId, channel.guildId);
 	}
 
 	public async getClanCategory(): Promise<CategoryChannel | undefined> {
