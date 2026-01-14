@@ -3,6 +3,7 @@ import { ApplyOptions } from '@sapphire/decorators';
 import { Events, Listener } from '@sapphire/framework';
 import { PermissionFlagsBits } from 'discord-api-types/v10';
 import { useGuildIdsToSyncBansIn } from '../../lib/utils/hooks/useGuildIdsToSyncBansIn.js';
+import { ensureFullMember } from '../../lib/utils.js';
 
 const header = '[BAN SYNC] ';
 
@@ -109,7 +110,10 @@ export class LoadBansOnReady extends Listener {
 			);
 			const members = await guild.members.fetch();
 
-			for (const [id, member] of members) {
+			for (const [id, fetchedMember] of members) {
+				// Ensure member is fully hydrated before accessing user properties
+				const member = await ensureFullMember(fetchedMember);
+
 				const ban = banList.get(id);
 
 				if (ban) {

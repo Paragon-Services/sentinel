@@ -2,6 +2,7 @@ import { RoleSyncType } from '@prisma/client';
 import { ApplyOptions } from '@sapphire/decorators';
 import { Events, Listener, container } from '@sapphire/framework';
 import type { GuildMember, PartialGuildMember } from 'discord.js';
+import { ensureFullMember } from '../../../lib/utils.js';
 
 async function removeRoleFromMember(member: GuildMember, roleId: string) {
 	try {
@@ -30,6 +31,9 @@ async function addRoleToMember(member: GuildMember, roleId: string) {
 @ApplyOptions<Listener.Options>({ event: Events.GuildMemberUpdate })
 export class SyncRankRoles extends Listener<typeof Events.GuildMemberUpdate> {
 	public override async run(oldMember: GuildMember | PartialGuildMember, newMember: GuildMember) {
+		await ensureFullMember(oldMember);
+		await ensureFullMember(newMember);
+
 		const memberData = await this.container.prisma.guildMember.findUnique({
 			where: { userId_guildId: { guildId: newMember.guild.id, userId: newMember.id } },
 		});

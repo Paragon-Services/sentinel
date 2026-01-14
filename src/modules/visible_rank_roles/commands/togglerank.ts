@@ -1,8 +1,10 @@
 import { RoleSyncType } from '@prisma/client';
 import { ApplyOptions } from '@sapphire/decorators';
 import { Command } from '@sapphire/framework';
+import { MessageFlags } from 'discord-api-types/v10';
 import { type Message, type TextChannel } from 'discord.js';
 import { createInfoEmbed } from '../../../lib/utils/createEmbed.js';
+import { ensureFullMember } from '../../../lib/utils.js';
 
 @ApplyOptions<Command.Options>({
 	description: 'Toggles whether your rank role should be showcased to others or not',
@@ -21,7 +23,7 @@ export class ToggleRankCommand extends Command {
 
 	public override async chatInputRun(interaction: Command.ChatInputCommandInteraction<'cached'>) {
 		await interaction.deferReply({
-			ephemeral: true,
+			flags: MessageFlags.Ephemeral,
 		});
 
 		const memberData = await this.container.prisma.guildMember.findUnique({
@@ -44,7 +46,7 @@ export class ToggleRankCommand extends Command {
 			},
 		});
 
-		const member = await interaction.guild.members.fetch(interaction.user.id);
+		const member = await ensureFullMember(await interaction.guild.members.fetch(interaction.user.id));
 
 		for (const { origin_role_id: mainRankRole, destination_role_id: visibleRankRole } of roles) {
 			const hasMainRole = member.roles.cache.has(mainRankRole);

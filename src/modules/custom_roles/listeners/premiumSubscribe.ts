@@ -3,10 +3,14 @@ import { Events, Listener } from '@sapphire/framework';
 import type { GuildMember } from 'discord.js';
 import { ClanManager } from '../../../lib/abilities/ClanManager.js';
 import { MemberAbilities } from '../../../lib/abilities/MemberAbilities.js';
+import { ensureFullMember } from '../../../lib/utils.js';
 
 @ApplyOptions<Listener.Options>({ event: Events.GuildMemberUpdate })
 export class PremiumSubscribe extends Listener<typeof Events.GuildMemberUpdate> {
 	public override async run(oldMember: GuildMember, newMember: GuildMember) {
+		await ensureFullMember(oldMember);
+		await ensureFullMember(newMember);
+
 		const oldMemberAbilities = new MemberAbilities(oldMember);
 		const newMemberAbilities = new MemberAbilities(newMember);
 
@@ -24,7 +28,8 @@ export class PremiumSubscribe extends Listener<typeof Events.GuildMemberUpdate> 
 
 		const clanManager = new ClanManager(newMember);
 		const clan = await clanManager.getClan();
-		const canNowCreateClan = !oldMemberAbilities.hasAbility('canCreateClan') && newMemberAbilities.hasAbility('canCreateClan');
+		const canNowCreateClan =
+			!oldMemberAbilities.hasAbility('canCreateClan') && newMemberAbilities.hasAbility('canCreateClan');
 
 		// If user has a clan, we can end the cooldown and un-orphan the clan
 		if (canNowCreateClan && clan) {

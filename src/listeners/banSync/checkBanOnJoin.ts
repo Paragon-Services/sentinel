@@ -3,6 +3,7 @@ import { Events, Listener } from '@sapphire/framework';
 import { PermissionFlagsBits } from 'discord-api-types/v10';
 import type { GuildMember } from 'discord.js';
 import { useGuildIdsToSyncBansIn } from '../../lib/utils/hooks/useGuildIdsToSyncBansIn.js';
+import { ensureFullMember } from '../../lib/utils.js';
 
 const header = '[BAN SYNC] ';
 
@@ -11,6 +12,8 @@ const header = '[BAN SYNC] ';
 })
 export class CheckBanOnJoin extends Listener {
 	public async run(member: GuildMember) {
+		await ensureFullMember(member);
+
 		const guildIdsToCheck = useGuildIdsToSyncBansIn();
 		const { guild } = member;
 

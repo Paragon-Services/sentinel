@@ -6,9 +6,9 @@ import { loadMediaOnlyChannels } from '../lib/utils/caches/mediaOnlyCache.js';
 
 @ApplyOptions<Listener.Options>({
 	once: true,
-	event: 'ready',
+	event: 'clientReady',
 })
-export class ReadyEvent extends Listener {
+export class ClientReadyEvent extends Listener {
 	public async run() {
 		const { client } = this.container;
 		const { user, logger } = client;
@@ -43,6 +43,10 @@ export class ReadyEvent extends Listener {
 
 			if (!client.schedule.queue.some((task) => task.taskID === 'UpdateClanDirectory')) {
 				await client.schedule.add('UpdateClanDirectory', '*/5 * * * *');
+			}
+
+			if (!client.schedule.queue.some((task) => task.taskID === 'checkPremiumMemberAbilities')) {
+				await client.schedule.add('checkPremiumMemberAbilities', '0 10 * * *');
 			}
 		} catch (error) {
 			client.emit('wtf', error);
