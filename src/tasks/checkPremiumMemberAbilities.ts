@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/node';
 import { ClanManager } from '../lib/abilities/ClanManager.js';
 import { MemberAbilities } from '../lib/abilities/MemberAbilities.js';
 import { Task, type TaskRunData } from '../lib/schedule/tasks/Task.js';
@@ -24,14 +25,63 @@ export interface CheckPremiumMemberAbilitiesResult {
 	totalOrphanedClansWithoutTask: number;
 }
 
+const LOG_PREFIX = '[PREMIUM ABILITY CHECK]';
+
+function addBreadcrumb(message: string, data?: Record<string, unknown>, level: Sentry.SeverityLevel = 'info'): void {
+	Sentry.addBreadcrumb({
+		category: 'premium-ability-check',
+		message: `${LOG_PREFIX} ${message}`,
+		level,
+		data,
+	});
+}
+
+function captureError(error: Error, context: string, extra?: Record<string, unknown>): void {
+	Sentry.withScope((scope) => {
+		scope.setTag('operation', 'premium-ability-check');
+		scope.setExtra('context', context);
+		if (extra) {
+			scope.setExtras(extra);
+		}
+
+		Sentry.captureException(error);
+	});
+}
+
+function captureWarning(message: string, extra?: Record<string, unknown>): void {
+	Sentry.withScope((scope) => {
+		scope.setTag('operation', 'premium-ability-check');
+		scope.setLevel('warning');
+		if (extra) {
+			scope.setExtras(extra);
+		}
+
+		Sentry.captureMessage(`${LOG_PREFIX} ${message}`, 'warning');
+	});
+}
+
 /**
  * Daily task that checks if premium members still have their expected abilities.
  * Logs any discrepancies for monitoring and debugging.
  */
 export class CheckPremiumMemberAbilities extends Task {
 	public async run(data?: TaskRunData) {
-		const options: CheckPremiumMemberAbilitiesOptions = data?.data ? JSON.parse(data.data) : {};
-		await this.checkAbilities(options);
+		addBreadcrumb('Task run() called', { hasData: Boolean(data?.data) });
+
+		try {
+			const options: CheckPremiumMemberAbilitiesOptions = data?.data ? JSON.parse(data.data) : {};
+			addBreadcrumb('Parsed options', {
+				fixMode: options.fixMode ?? 'dry-run',
+				guildId: options.guildId ?? 'all',
+			});
+			await this.checkAbilities(options);
+			addBreadcrumb('Task completed successfully');
+		} catch (error) {
+			addBreadcrumb('Task run() failed with unhandled error', { error: String(error) }, 'error');
+			captureError(error as Error, 'run: unhandled error in task');
+			this.container.logger.error(`${LOG_PREFIX} Unhandled error in task:`, error);
+		}
+
 		return null;
 	}
 
@@ -48,59 +98,104 @@ export class CheckPremiumMemberAbilities extends Task {
 		guildName: string,
 		reason: 'mismatch' | 'missing',
 	): Promise<void> {
+		addBreadcrumb('Starting cleanupPremiumMember', { guildId, userId, customRoleId, guildName, reason });
+
 		const guild = this.container.client.guilds.resolve(guildId);
-		if (!guild) return;
+		if (!guild) {
+			addBreadcrumb('cleanupPremiumMember: guild not found', { guildId }, 'warning');
+			return;
+		}
 
 		let shouldDeleteCustomRole = false;
 
 		if (customRoleId) {
+			addBreadcrumb('Checking for clan', { customRoleId });
 			const clanManager = new ClanManager(customRoleId, guildId);
-			const clan = await clanManager.getClan();
+
+			let clan;
+			try {
+				clan = await clanManager.getClan();
+				addBreadcrumb('Clan lookup completed', { found: Boolean(clan), customRoleId });
+			} catch (error) {
+				addBreadcrumb('Clan lookup failed', { error: String(error), customRoleId }, 'error');
+				captureError(error as Error, 'cleanupPremiumMember: getClan failed', { guildId, userId, customRoleId });
+				shouldDeleteCustomRole = true;
+			}
 
 			if (clan) {
 				if (clan.deletionTaskId) {
 					this.container.logger.info(
-						`[PREMIUM ABILITY CHECK] [CLEANUP] Clan for role ${customRoleId} is already orphaned, skipping`,
+						`${LOG_PREFIX} [CLEANUP] Clan for role ${customRoleId} is already orphaned, skipping`,
 					);
+					addBreadcrumb('Clan already orphaned, skipping deletion', {
+						customRoleId,
+						deletionTaskId: clan.deletionTaskId,
+					});
 				} else {
 					try {
+						addBreadcrumb('Deleting clan', { customRoleId });
 						await clanManager.deleteClan();
 						this.container.logger.info(
-							`[PREMIUM ABILITY CHECK] [CLEANUP] Deleted clan for role ${customRoleId} for ${reason} user ${userId}`,
+							`${LOG_PREFIX} [CLEANUP] Deleted clan for role ${customRoleId} for ${reason} user ${userId}`,
 						);
+						addBreadcrumb('Clan deleted successfully', { customRoleId, reason, userId });
 						shouldDeleteCustomRole = true;
 					} catch (error) {
 						this.container.logger.error(
-							`[PREMIUM ABILITY CHECK] [CLEANUP] Failed to delete clan for role ${customRoleId}:`,
+							`${LOG_PREFIX} [CLEANUP] Failed to delete clan for role ${customRoleId}:`,
 							error,
 						);
+						addBreadcrumb('Failed to delete clan', { error: String(error), customRoleId }, 'error');
+						captureError(error as Error, 'cleanupPremiumMember: deleteClan failed', {
+							guildId,
+							userId,
+							customRoleId,
+						});
 						shouldDeleteCustomRole = true;
 					}
 				}
 			} else {
+				addBreadcrumb('No clan found for role, will delete role', { customRoleId });
 				shouldDeleteCustomRole = true;
 			}
 		}
 
 		if (customRoleId && shouldDeleteCustomRole) {
-			const role = await guild.roles.fetch(customRoleId).catch(() => null);
+			addBreadcrumb('Fetching custom role from Discord', { customRoleId });
+			let role;
+			try {
+				role = await guild.roles.fetch(customRoleId);
+				addBreadcrumb('Role fetch completed', { found: Boolean(role), customRoleId });
+			} catch (error) {
+				addBreadcrumb('Role fetch failed (may not exist)', { error: String(error), customRoleId }, 'warning');
+				role = null;
+			}
 
 			if (role) {
 				try {
+					addBreadcrumb('Deleting custom role', { customRoleId, roleName: role.name });
 					await role.delete(`Premium member ${reason}: user ${userId} lost abilities`);
 					this.container.logger.info(
-						`[PREMIUM ABILITY CHECK] [CLEANUP] Deleted custom role ${customRoleId} for ${reason} user ${userId}`,
+						`${LOG_PREFIX} [CLEANUP] Deleted custom role ${customRoleId} for ${reason} user ${userId}`,
 					);
+					addBreadcrumb('Custom role deleted successfully', { customRoleId, userId });
 				} catch (error) {
 					this.container.logger.error(
-						`[PREMIUM ABILITY CHECK] [CLEANUP] Failed to delete custom role ${customRoleId}:`,
+						`${LOG_PREFIX} [CLEANUP] Failed to delete custom role ${customRoleId}:`,
 						error,
 					);
+					addBreadcrumb('Failed to delete custom role', { error: String(error), customRoleId }, 'error');
+					captureError(error as Error, 'cleanupPremiumMember: role delete failed', {
+						guildId,
+						userId,
+						customRoleId,
+					});
 				}
 			}
 		}
 
 		// 3. Delete premium member entry from database
+		addBreadcrumb('Deleting premium member from database', { guildId, userId });
 		try {
 			await this.container.prisma.premiumMember.delete({
 				where: {
@@ -112,33 +207,60 @@ export class CheckPremiumMemberAbilities extends Task {
 			});
 
 			this.container.logger.info(
-				`[PREMIUM ABILITY CHECK] [FIXED] Removed premium member entry for ${reason} user ${userId} in guild ${guildName} (${guildId})`,
+				`${LOG_PREFIX} [FIXED] Removed premium member entry for ${reason} user ${userId} in guild ${guildName} (${guildId})`,
 			);
+			addBreadcrumb('Premium member database entry deleted', { guildId, userId, reason });
 		} catch (error) {
 			this.container.logger.error(
-				`[PREMIUM ABILITY CHECK] Failed to remove premium member ${userId} in guild ${guildId}:`,
+				`${LOG_PREFIX} Failed to remove premium member ${userId} in guild ${guildId}:`,
 				error,
 			);
+			addBreadcrumb(
+				'Failed to delete premium member from database',
+				{ error: String(error), guildId, userId },
+				'error',
+			);
+			captureError(error as Error, 'cleanupPremiumMember: database delete failed', { guildId, userId });
 		}
+
+		addBreadcrumb('cleanupPremiumMember completed', { guildId, userId, reason });
 	}
 
 	public async checkAbilities(
 		options: CheckPremiumMemberAbilitiesOptions = {},
 	): Promise<CheckPremiumMemberAbilitiesResult> {
 		const fixMode = options.fixMode ?? 'dry-run';
-		this.container.logger.info(
-			`[PREMIUM ABILITY CHECK] Starting premium member ability check (mode: ${fixMode})...`,
-		);
+		this.container.logger.info(`${LOG_PREFIX} Starting premium member ability check (mode: ${fixMode})...`);
+		addBreadcrumb('checkAbilities started', { fixMode, guildId: options.guildId ?? 'all' });
 
 		const whereClause = options.guildId ? { guildId: options.guildId } : {};
-		const premiumMembers = await this.container.prisma.premiumMember.findMany({
-			where: whereClause,
-			select: {
-				userId: true,
-				guildId: true,
-				customRoleId: true,
-			},
-		});
+
+		addBreadcrumb('Querying premium members from database', { whereClause });
+		let premiumMembers;
+		try {
+			premiumMembers = await this.container.prisma.premiumMember.findMany({
+				where: whereClause,
+				select: {
+					userId: true,
+					guildId: true,
+					customRoleId: true,
+				},
+			});
+			addBreadcrumb('Premium members query completed', { count: premiumMembers.length });
+			this.container.logger.info(`${LOG_PREFIX} Found ${premiumMembers.length} premium members to check`);
+		} catch (error) {
+			addBreadcrumb('Premium members query FAILED', { error: String(error) }, 'error');
+			captureError(error as Error, 'checkAbilities: premiumMember.findMany failed');
+			this.container.logger.error(`${LOG_PREFIX} Failed to query premium members:`, error);
+			return {
+				totalChecked: 0,
+				totalMismatches: 0,
+				totalMissing: 0,
+				fixed: 0,
+				totalOrphanedClansWithoutTask: 0,
+				orphanedClansFixed: 0,
+			};
+		}
 
 		let totalChecked = 0;
 		let totalMismatches = 0;
@@ -148,13 +270,29 @@ export class CheckPremiumMemberAbilities extends Task {
 		let orphanedClansFixed = 0;
 
 		if (premiumMembers.length > 0) {
-			for (const premiumMember of premiumMembers) {
+			addBreadcrumb('Starting premium member iteration', { totalMembers: premiumMembers.length });
+
+			for (const [index, premiumMember] of premiumMembers.entries()) {
+				if (index % 10 === 0) {
+					addBreadcrumb('Processing premium members', {
+						progress: `${index}/${premiumMembers.length}`,
+						totalChecked,
+						totalMismatches,
+						totalMissing,
+					});
+				}
+
 				try {
 					const guild = this.container.client.guilds.resolve(premiumMember.guildId);
 
 					if (!guild) {
 						this.container.logger.warn(
-							`[PREMIUM ABILITY CHECK] Guild ${premiumMember.guildId} not found for user ${premiumMember.userId}`,
+							`${LOG_PREFIX} Guild ${premiumMember.guildId} not found for user ${premiumMember.userId}`,
+						);
+						addBreadcrumb(
+							'Guild not found for premium member',
+							{ guildId: premiumMember.guildId, userId: premiumMember.userId },
+							'warning',
 						);
 						continue;
 					}
@@ -164,15 +302,27 @@ export class CheckPremiumMemberAbilities extends Task {
 					let member;
 
 					try {
+						addBreadcrumb('Fetching guild member', { guildId: guild.id, userId: premiumMember.userId });
 						member = await guild.members.fetch(premiumMember.userId);
-					} catch {
+						addBreadcrumb('Guild member fetched', {
+							guildId: guild.id,
+							userId: premiumMember.userId,
+							tag: member.user.tag,
+						});
+					} catch (fetchError) {
 						totalMissing++;
 						this.container.logger.warn(
-							`[PREMIUM ABILITY CHECK] User ${premiumMember.userId} not found in guild ${guild.name} (${guild.id}) - may have left the server`,
+							`${LOG_PREFIX} User ${premiumMember.userId} not found in guild ${guild.name} (${guild.id}) - may have left the server`,
+						);
+						addBreadcrumb(
+							'Member not found in guild (may have left)',
+							{ guildId: guild.id, userId: premiumMember.userId, error: String(fetchError) },
+							'warning',
 						);
 
 						// Fix missing members if mode is 'fix-missing' or 'fix-all'
 						if (fixMode === 'fix-missing' || fixMode === 'fix-all') {
+							addBreadcrumb('Cleaning up missing member', { userId: premiumMember.userId, fixMode });
 							await this.cleanupPremiumMember(
 								premiumMember.guildId,
 								premiumMember.userId,
@@ -186,8 +336,24 @@ export class CheckPremiumMemberAbilities extends Task {
 						continue;
 					}
 
+					addBreadcrumb('Computing member abilities', { userId: premiumMember.userId, tag: member.user.tag });
 					const memberAbilities = new MemberAbilities(member);
-					await memberAbilities.computeAbilities();
+
+					try {
+						await memberAbilities.computeAbilities();
+						addBreadcrumb('Abilities computed', { userId: premiumMember.userId });
+					} catch (abilityError) {
+						addBreadcrumb(
+							'Failed to compute abilities',
+							{ userId: premiumMember.userId, error: String(abilityError) },
+							'error',
+						);
+						captureError(abilityError as Error, 'checkAbilities: computeAbilities failed', {
+							userId: premiumMember.userId,
+							guildId: premiumMember.guildId,
+						});
+						continue;
+					}
 
 					const hasAnyAbility =
 						memberAbilities.hasAbility('canCreateClan') ||
@@ -195,10 +361,19 @@ export class CheckPremiumMemberAbilities extends Task {
 						memberAbilities.hasAbility('canGiftLegend') ||
 						memberAbilities.hasAbility('areAbilitiesMultiGuild');
 
+					addBreadcrumb('Ability check result', {
+						userId: premiumMember.userId,
+						hasAnyAbility,
+						canCreateClan: memberAbilities.hasAbility('canCreateClan'),
+						canCreateCustomRole: memberAbilities.hasAbility('canCreateCustomRole'),
+						canGiftLegend: memberAbilities.hasAbility('canGiftLegend'),
+						areAbilitiesMultiGuild: memberAbilities.hasAbility('areAbilitiesMultiGuild'),
+					});
+
 					if (!hasAnyAbility) {
 						totalMismatches++;
 						this.container.logger.warn(
-							`[PREMIUM ABILITY CHECK] [PREMIUM MEMBER LOST ABILITIES] User ${member.user.tag} (${premiumMember.userId}) in guild ${guild.name} (${guild.id}) is in the premium members database but has NO premium abilities in Discord. This indicates they lost their premium role.`,
+							`${LOG_PREFIX} [PREMIUM MEMBER LOST ABILITIES] User ${member.user.tag} (${premiumMember.userId}) in guild ${guild.name} (${guild.id}) is in the premium members database but has NO premium abilities in Discord. This indicates they lost their premium role.`,
 							{
 								userId: premiumMember.userId,
 								guildId: premiumMember.guildId,
@@ -207,9 +382,25 @@ export class CheckPremiumMemberAbilities extends Task {
 								customRoleId: premiumMember.customRoleId,
 							},
 						);
+						addBreadcrumb(
+							'MISMATCH: Premium member has no abilities',
+							{
+								userId: premiumMember.userId,
+								guildId: premiumMember.guildId,
+								tag: member.user.tag,
+								customRoleId: premiumMember.customRoleId,
+							},
+							'warning',
+						);
+						captureWarning(`Premium member lost abilities: ${member.user.tag} (${premiumMember.userId})`, {
+							userId: premiumMember.userId,
+							guildId: premiumMember.guildId,
+							customRoleId: premiumMember.customRoleId,
+						});
 
 						// Fix mismatches if mode is 'fix-mismatches' or 'fix-all'
 						if (fixMode === 'fix-mismatches' || fixMode === 'fix-all') {
+							addBreadcrumb('Cleaning up mismatch member', { userId: premiumMember.userId, fixMode });
 							await this.cleanupPremiumMember(
 								premiumMember.guildId,
 								premiumMember.userId,
@@ -222,35 +413,95 @@ export class CheckPremiumMemberAbilities extends Task {
 					}
 				} catch (error) {
 					this.container.logger.error(
-						`[PREMIUM ABILITY CHECK] Error checking premium member ${premiumMember.userId} in guild ${premiumMember.guildId}:`,
+						`${LOG_PREFIX} Error checking premium member ${premiumMember.userId} in guild ${premiumMember.guildId}:`,
 						error,
 					);
+					addBreadcrumb(
+						'Error checking premium member',
+						{ userId: premiumMember.userId, guildId: premiumMember.guildId, error: String(error) },
+						'error',
+					);
+					captureError(error as Error, 'checkAbilities: error in premium member loop', {
+						userId: premiumMember.userId,
+						guildId: premiumMember.guildId,
+					});
 				}
 			}
+
+			addBreadcrumb('Premium member iteration completed', {
+				totalChecked,
+				totalMismatches,
+				totalMissing,
+				fixed,
+			});
+		} else {
+			addBreadcrumb('No premium members found to check', { whereClause });
+			this.container.logger.info(`${LOG_PREFIX} No premium members found to check`);
 		}
 
 		// Check all clans for orphan issues
-		this.container.logger.info('[PREMIUM ABILITY CHECK] Checking for orphaned clans...');
+		this.container.logger.info(`${LOG_PREFIX} Checking for orphaned clans...`);
+		addBreadcrumb('Starting orphaned clan check');
 
-		const clans = await this.container.prisma.clan.findMany({
-			where: options.guildId ? { guildId: options.guildId } : {},
-			select: {
-				customRoleId: true,
-				deletionTaskId: true,
-				guildId: true,
-			},
-		});
+		let clans: { customRoleId: string; deletionTaskId: number | null; guildId: string }[] = [];
+		try {
+			addBreadcrumb('Querying clans from database');
+			clans = await this.container.prisma.clan.findMany({
+				where: options.guildId ? { guildId: options.guildId } : {},
+				select: {
+					customRoleId: true,
+					deletionTaskId: true,
+					guildId: true,
+				},
+			});
+			addBreadcrumb('Clans query completed', { count: clans.length });
+			this.container.logger.info(`${LOG_PREFIX} Found ${clans.length} clans to check`);
+		} catch (error) {
+			addBreadcrumb('Clans query FAILED', { error: String(error) }, 'error');
+			captureError(error as Error, 'checkAbilities: clan.findMany failed');
+			this.container.logger.error(`${LOG_PREFIX} Failed to query clans:`, error);
+		}
 
-		for (const clan of clans) {
+		for (const [index, clan] of clans.entries()) {
+			if (index % 10 === 0) {
+				addBreadcrumb('Processing clans', {
+					progress: `${index}/${clans.length}`,
+					totalOrphanedClansWithoutTask,
+					orphanedClansFixed,
+				});
+			}
+
 			try {
 				let isOrphaned = false;
 				let orphanReason = '';
 
 				if (clan.deletionTaskId) {
 					// Clan has a deletionTaskId, verify the scheduled task actually exists
-					const scheduledTask = await this.container.prisma.schedule.findUnique({
-						where: { id: clan.deletionTaskId },
+					addBreadcrumb('Verifying scheduled deletion task exists', {
+						customRoleId: clan.customRoleId,
+						deletionTaskId: clan.deletionTaskId,
 					});
+
+					let scheduledTask;
+					try {
+						scheduledTask = await this.container.prisma.schedule.findUnique({
+							where: { id: clan.deletionTaskId },
+						});
+						addBreadcrumb('Scheduled task lookup completed', {
+							customRoleId: clan.customRoleId,
+							taskExists: Boolean(scheduledTask),
+						});
+					} catch (error) {
+						addBreadcrumb(
+							'Scheduled task lookup failed',
+							{ customRoleId: clan.customRoleId, error: String(error) },
+							'error',
+						);
+						captureError(error as Error, 'checkAbilities: schedule lookup failed', {
+							customRoleId: clan.customRoleId,
+							deletionTaskId: clan.deletionTaskId,
+						});
+					}
 
 					if (!scheduledTask) {
 						isOrphaned = true;
@@ -258,12 +509,31 @@ export class CheckPremiumMemberAbilities extends Task {
 					}
 				} else {
 					// Clan has no deletionTaskId, check if it has a premium member owner
-					const premiumMember = await this.container.prisma.premiumMember.findFirst({
-						where: {
-							guildId: clan.guildId,
+					addBreadcrumb('Checking for premium member owner', { customRoleId: clan.customRoleId });
+
+					let premiumMember;
+					try {
+						premiumMember = await this.container.prisma.premiumMember.findFirst({
+							where: {
+								guildId: clan.guildId,
+								customRoleId: clan.customRoleId,
+							},
+						});
+						addBreadcrumb('Premium member owner lookup completed', {
 							customRoleId: clan.customRoleId,
-						},
-					});
+							found: Boolean(premiumMember),
+						});
+					} catch (error) {
+						addBreadcrumb(
+							'Premium member owner lookup failed',
+							{ customRoleId: clan.customRoleId, error: String(error) },
+							'error',
+						);
+						captureError(error as Error, 'checkAbilities: premiumMember lookup for clan failed', {
+							customRoleId: clan.customRoleId,
+							guildId: clan.guildId,
+						});
+					}
 
 					if (!premiumMember) {
 						isOrphaned = true;
@@ -276,44 +546,97 @@ export class CheckPremiumMemberAbilities extends Task {
 					const guild = this.container.client.guilds.resolve(clan.guildId);
 
 					this.container.logger.warn(
-						`[PREMIUM ABILITY CHECK] [ORPHANED CLAN] Clan with custom role ${clan.customRoleId} in guild ${clan.guildId} ${orphanReason}`,
+						`${LOG_PREFIX} [ORPHANED CLAN] Clan with custom role ${clan.customRoleId} in guild ${clan.guildId} ${orphanReason}`,
 					);
+					addBreadcrumb(
+						'ORPHANED CLAN detected',
+						{ customRoleId: clan.customRoleId, guildId: clan.guildId, reason: orphanReason },
+						'warning',
+					);
+					captureWarning(`Orphaned clan detected: ${clan.customRoleId}`, {
+						customRoleId: clan.customRoleId,
+						guildId: clan.guildId,
+						reason: orphanReason,
+					});
 
 					// Delete orphaned clan immediately if fix mode allows
 					if ((fixMode === 'fix-all' || fixMode === 'fix-missing') && guild) {
 						try {
+							addBreadcrumb('Deleting orphaned clan', { customRoleId: clan.customRoleId });
 							const clanManager = new ClanManager(clan.customRoleId, clan.guildId);
 							await clanManager.deleteClan();
+							addBreadcrumb('Orphaned clan deleted', { customRoleId: clan.customRoleId });
 
 							// Also delete the custom role from Discord
+							addBreadcrumb('Fetching custom role for orphaned clan', {
+								customRoleId: clan.customRoleId,
+							});
 							const role = await guild.roles.fetch(clan.customRoleId).catch(() => null);
 							if (role) {
+								addBreadcrumb('Deleting custom role for orphaned clan', {
+									customRoleId: clan.customRoleId,
+									roleName: role.name,
+								});
 								await role.delete('Orphaned clan cleanup');
+								addBreadcrumb('Custom role deleted', { customRoleId: clan.customRoleId });
 							}
 
 							orphanedClansFixed++;
 							this.container.logger.info(
-								`[PREMIUM ABILITY CHECK] [FIXED] Deleted orphaned clan with custom role ${clan.customRoleId} in guild ${guild.name} (${clan.guildId})`,
+								`${LOG_PREFIX} [FIXED] Deleted orphaned clan with custom role ${clan.customRoleId} in guild ${guild.name} (${clan.guildId})`,
 							);
+							addBreadcrumb('Orphaned clan cleanup completed', {
+								customRoleId: clan.customRoleId,
+								guildId: clan.guildId,
+							});
 						} catch (error) {
 							this.container.logger.error(
-								`[PREMIUM ABILITY CHECK] Failed to delete orphaned clan ${clan.customRoleId} in guild ${clan.guildId}:`,
+								`${LOG_PREFIX} Failed to delete orphaned clan ${clan.customRoleId} in guild ${clan.guildId}:`,
 								error,
 							);
+							addBreadcrumb(
+								'Failed to delete orphaned clan',
+								{ customRoleId: clan.customRoleId, error: String(error) },
+								'error',
+							);
+							captureError(error as Error, 'checkAbilities: orphaned clan deletion failed', {
+								customRoleId: clan.customRoleId,
+								guildId: clan.guildId,
+							});
 						}
 					}
 				}
 			} catch (error) {
 				this.container.logger.error(
-					`[PREMIUM ABILITY CHECK] Error checking clan ${clan.customRoleId} in guild ${clan.guildId}:`,
+					`${LOG_PREFIX} Error checking clan ${clan.customRoleId} in guild ${clan.guildId}:`,
 					error,
 				);
+				addBreadcrumb(
+					'Error checking clan',
+					{ customRoleId: clan.customRoleId, guildId: clan.guildId, error: String(error) },
+					'error',
+				);
+				captureError(error as Error, 'checkAbilities: error in clan loop', {
+					customRoleId: clan.customRoleId,
+					guildId: clan.guildId,
+				});
 			}
 		}
 
-		this.container.logger.info(
-			`[PREMIUM ABILITY CHECK] Completed. Checked ${totalChecked} members, found ${totalMismatches} mismatches, ${totalMissing} missing${totalOrphanedClansWithoutTask > 0 ? `, ${totalOrphanedClansWithoutTask} orphaned clans` : ''}${fixMode === 'dry-run' ? '' : `, fixed ${fixed} members and ${orphanedClansFixed} orphaned clans`}.`,
-		);
+		addBreadcrumb('Clan iteration completed', { totalOrphanedClansWithoutTask, orphanedClansFixed });
+
+		const summary = `Checked ${totalChecked} members, found ${totalMismatches} mismatches, ${totalMissing} missing${totalOrphanedClansWithoutTask > 0 ? `, ${totalOrphanedClansWithoutTask} orphaned clans` : ''}${fixMode === 'dry-run' ? '' : `, fixed ${fixed} members and ${orphanedClansFixed} orphaned clans`}.`;
+
+		this.container.logger.info(`${LOG_PREFIX} Completed. ${summary}`);
+		addBreadcrumb('checkAbilities completed', {
+			totalChecked,
+			totalMismatches,
+			totalMissing,
+			fixed,
+			totalOrphanedClansWithoutTask,
+			orphanedClansFixed,
+			fixMode,
+		});
 
 		return {
 			totalChecked,
