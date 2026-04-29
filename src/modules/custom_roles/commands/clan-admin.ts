@@ -533,6 +533,7 @@ export class ClanAdminCommand extends Subcommand {
 			let succeeded = 0;
 			let failed = 0;
 			let noOwner = 0;
+			let ownerLeftGuild = 0;
 			let firstError: string | undefined;
 
 			for (const manager of managers) {
@@ -541,6 +542,8 @@ export class ClanAdminCommand extends Subcommand {
 					succeeded++;
 				} else if (result.status === ClanPermissionEditStatus.NoOwner) {
 					noOwner++;
+				} else if (result.status === ClanPermissionEditStatus.OwnerNotInGuild) {
+					ownerLeftGuild++;
 				} else {
 					failed++;
 					if (!firstError && result.error) firstError = result.error;
@@ -555,13 +558,14 @@ export class ClanAdminCommand extends Subcommand {
 			];
 			if (failed > 0) resultLines.push(`**Failed:** ${failed}`);
 			if (noOwner > 0) resultLines.push(`**Skipped (no owner):** ${noOwner}`);
+			if (ownerLeftGuild > 0) resultLines.push(`**Skipped (owner left guild):** ${ownerLeftGuild}`);
 			if (missingChannelCount > 0) resultLines.push(`**Skipped (no channel):** ${missingChannelCount}`);
 			if (firstError) {
 				const safeError = firstError.slice(0, 500).replaceAll('`', "'");
 				resultLines.push('', '**First error:**', `\`\`\`\n${safeError}\n\`\`\``);
 			}
 
-			const hasIssues = failed > 0 || noOwner > 0 || missingChannelCount > 0;
+			const hasIssues = failed > 0 || noOwner > 0 || ownerLeftGuild > 0 || missingChannelCount > 0;
 
 			await this.replyWithComponents(interaction, [
 				new ContainerBuilder()

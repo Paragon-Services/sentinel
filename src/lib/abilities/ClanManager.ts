@@ -2,9 +2,9 @@ import type { Clan, ClanMember, PremiumMember } from '@prisma/client';
 import { container, type ILogger } from '@sapphire/framework';
 import { Duration } from '@sapphire/time-utilities';
 import * as Sentry from '@sentry/node';
-import { ChannelType, OverwriteType } from 'discord-api-types/v10';
+import { ChannelType, OverwriteType, RESTJSONErrorCodes } from 'discord-api-types/v10';
 import type { CategoryChannel, Guild, GuildMember, NonThreadGuildBasedChannel, Role, TextChannel } from 'discord.js';
-import { Collection } from 'discord.js';
+import { Collection, DiscordAPIError } from 'discord.js';
 import { LogPrefix } from '../utils/logPrefix.js';
 import { ensureFullMember } from '../utils.js';
 import { MemberAbilities } from './MemberAbilities.js';
@@ -59,7 +59,8 @@ export enum ClanPermissionEditStatus {
 	Success = 0,
 	NoChannel = 1,
 	NoOwner = 2,
-	Error = 3,
+	OwnerNotInGuild = 3,
+	Error = 4,
 }
 
 type CacheType = 'clan' | 'clanChannel' | 'clanMembers' | 'customRole' | 'premiumMember';
@@ -1427,6 +1428,14 @@ export class ClanManager {
 			this.addBreadcrumb('editChannelPermission completed', { targetId, permission, action });
 			return { status: ClanPermissionEditStatus.Success };
 		} catch (error) {
+			if (
+				error instanceof DiscordAPIError &&
+				error.code === RESTJSONErrorCodes.UnknownPermissionOverwrite
+			) {
+				this.addBreadcrumb('editChannelPermission: owner not in guild', { targetId }, 'warning');
+				return { status: ClanPermissionEditStatus.OwnerNotInGuild };
+			}
+
 			const errorMessage = String(error);
 			this.addBreadcrumb('editChannelPermission failed', { error: errorMessage }, 'error');
 			this.logError('editChannelPermission failed:', error);
