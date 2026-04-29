@@ -533,12 +533,18 @@ export class ClanAdminCommand extends Subcommand {
 			let succeeded = 0;
 			let failed = 0;
 			let noOwner = 0;
+			let firstError: string | undefined;
 
 			for (const manager of managers) {
-				const status = await manager.editChannelPermission(target, permission, action);
-				if (status === ClanPermissionEditStatus.Success) succeeded++;
-				else if (status === ClanPermissionEditStatus.NoOwner) noOwner++;
-				else failed++;
+				const result = await manager.editChannelPermission(target, permission, action);
+				if (result.status === ClanPermissionEditStatus.Success) {
+					succeeded++;
+				} else if (result.status === ClanPermissionEditStatus.NoOwner) {
+					noOwner++;
+				} else {
+					failed++;
+					if (!firstError && result.error) firstError = result.error;
+				}
 			}
 
 			const resultLines = [
@@ -550,6 +556,10 @@ export class ClanAdminCommand extends Subcommand {
 			if (failed > 0) resultLines.push(`**Failed:** ${failed}`);
 			if (noOwner > 0) resultLines.push(`**Skipped (no owner):** ${noOwner}`);
 			if (missingChannelCount > 0) resultLines.push(`**Skipped (no channel):** ${missingChannelCount}`);
+			if (firstError) {
+				const safeError = firstError.slice(0, 500).replaceAll('`', "'");
+				resultLines.push('', '**First error:**', `\`\`\`\n${safeError}\n\`\`\``);
+			}
 
 			const hasIssues = failed > 0 || noOwner > 0 || missingChannelCount > 0;
 

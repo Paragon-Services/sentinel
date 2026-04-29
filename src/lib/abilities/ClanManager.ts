@@ -1392,13 +1392,13 @@ export class ClanManager {
 		target: ClanPermissionEditTarget,
 		permission: string,
 		action: boolean | null,
-	): Promise<ClanPermissionEditStatus> {
+	): Promise<{ error?: string; status: ClanPermissionEditStatus }> {
 		this.addBreadcrumb('Starting editChannelPermission', { target, permission, action });
 
 		const channel = await this.getClanChannel();
 		if (!channel) {
 			this.addBreadcrumb('editChannelPermission: no channel', undefined, 'warning');
-			return ClanPermissionEditStatus.NoChannel;
+			return { status: ClanPermissionEditStatus.NoChannel };
 		}
 
 		let targetId: string;
@@ -1411,7 +1411,7 @@ export class ClanManager {
 
 			if (!ownerId) {
 				this.addBreadcrumb('editChannelPermission: no owner', undefined, 'warning');
-				return ClanPermissionEditStatus.NoOwner;
+				return { status: ClanPermissionEditStatus.NoOwner };
 			}
 
 			targetId = ownerId;
@@ -1422,11 +1422,13 @@ export class ClanManager {
 		try {
 			await channel.permissionOverwrites.edit(targetId, { [permission]: action });
 			this.addBreadcrumb('editChannelPermission completed', { targetId, permission, action });
-			return ClanPermissionEditStatus.Success;
+			return { status: ClanPermissionEditStatus.Success };
 		} catch (error) {
-			this.addBreadcrumb('editChannelPermission failed', { error: String(error) }, 'error');
+			const errorMessage = String(error);
+			this.addBreadcrumb('editChannelPermission failed', { error: errorMessage }, 'error');
+			this.logError('editChannelPermission failed:', error);
 			this.captureError(error as Error, 'editChannelPermission failed');
-			return ClanPermissionEditStatus.Error;
+			return { error: errorMessage, status: ClanPermissionEditStatus.Error };
 		}
 	}
 
