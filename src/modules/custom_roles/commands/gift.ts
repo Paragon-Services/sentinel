@@ -5,7 +5,7 @@ import { RoleAbilitiesCalculator } from '../../../lib/abilities/RoleAbilities.js
 import { createInfoEmbed } from '../../../lib/utils/createEmbed.js';
 import { makePremiumRoleGiftSwitchId } from '../interaction-handlers/switch-gift.js';
 
-const thirtyMinutes = 1_000 * 60 * 30;
+const giftingCooldown = 1_000 * 60 * 60 * 24; // 24 hours
 
 export class GiftCommand extends Subcommand {
 	public subcommandMappings: SubcommandMappingArray = [
@@ -105,12 +105,12 @@ export class GiftCommand extends Subcommand {
 
 			await this.container.prisma.premiumMember.upsert({
 				where: { guildId_userId: { guildId: interaction.guildId, userId: interaction.user.id } },
-				update: { giftedRoleToUserId: user.id, giftingCooldown: new Date(Date.now() + thirtyMinutes) },
+				update: { giftedRoleToUserId: user.id, giftingCooldown: new Date(Date.now() + giftingCooldown) },
 				create: {
 					guildId: interaction.guildId,
 					userId: interaction.user.id,
 					giftedRoleToUserId: user.id,
-					giftingCooldown: new Date(Date.now() + thirtyMinutes),
+					giftingCooldown: new Date(Date.now() + giftingCooldown),
 				},
 			});
 
