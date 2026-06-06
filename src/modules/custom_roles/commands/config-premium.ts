@@ -1093,6 +1093,14 @@ export class ConfigPremiumCommand extends Subcommand {
 			description.push(`🏚️ Orphaned clans: ${result.totalOrphanedClansWithoutTask}`);
 		}
 
+		if (result.totalStaleGifts > 0) {
+			description.push(`🎁 Stale Legend gifts: ${result.totalStaleGifts}`);
+		}
+
+		if (result.totalStrayLegendUsers > 0) {
+			description.push(`👑 Stray Legend role holders: ${result.totalStrayLegendUsers}`);
+		}
+
 		if (result.totalStrayPickUsers > 0) {
 			description.push(`🎟️ Stray subscriber picks: ${result.totalStrayPickUsers} user(s)`);
 		}
@@ -1108,6 +1116,14 @@ export class ConfigPremiumCommand extends Subcommand {
 				description.push(`🔧 Orphaned clans scheduled for deletion: ${result.orphanedClansFixed}`);
 			}
 
+			if (result.staleGiftsFixed > 0) {
+				description.push(`🔧 Stale Legend gifts revoked: ${result.staleGiftsFixed}`);
+			}
+
+			if (result.strayLegendUsersFixed > 0) {
+				description.push(`🔧 Stray Legend roles removed: ${result.strayLegendUsersFixed}`);
+			}
+
 			if (result.strayPickUsersFixed > 0) {
 				description.push(`🔧 Stray subscriber picks stripped from: ${result.strayPickUsersFixed} user(s)`);
 			}
@@ -1118,7 +1134,7 @@ export class ConfigPremiumCommand extends Subcommand {
 				: fixMode === 'fix-missing' ? 'missing members'
 				: 'mismatches';
 			description.push(
-				`*Removed ${result.fixed} premium member entries, scheduled ${result.orphanedClansFixed} orphaned clans for deletion, and stripped picks from ${result.strayPickUsersFixed} user(s) (${fixedWhat}).*`,
+				`*Removed ${result.fixed} premium member entries, scheduled ${result.orphanedClansFixed} orphaned clans for deletion, revoked ${result.staleGiftsFixed} stale Legend gift(s), removed ${result.strayLegendUsersFixed} stray Legend role(s), and stripped picks from ${result.strayPickUsersFixed} user(s) (${fixedWhat}).*`,
 			);
 		}
 

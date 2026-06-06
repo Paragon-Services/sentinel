@@ -103,69 +103,68 @@ export class PremiumUnsubscribe extends Listener<typeof Events.GuildMemberUpdate
 					Sentry.captureException(error);
 				});
 			}
-		} else if (premiumMember) {
-			if (canNoLongerCreateCustomRole) {
+		} else if (premiumMember && canNoLongerCreateCustomRole) {
+			Sentry.addBreadcrumb({
+				category: 'clan',
+				message: `${logPrefix} Member can no longer create custom role, deleting premium role`,
+				level: 'info',
+				data: { ...tags, customRoleId: premiumMember.customRoleId },
+			});
+
+			try {
+				await ClanManager.deletePremiumRole(premiumMember);
 				Sentry.addBreadcrumb({
 					category: 'clan',
-					message: `${logPrefix} Member can no longer create custom role, deleting premium role`,
+					message: `${logPrefix} Premium role deleted successfully`,
 					level: 'info',
-					data: { ...tags, customRoleId: premiumMember.customRoleId },
+					data: tags,
 				});
-
-				try {
-					await ClanManager.deletePremiumRole(premiumMember);
-					Sentry.addBreadcrumb({
-						category: 'clan',
-						message: `${logPrefix} Premium role deleted successfully`,
-						level: 'info',
-						data: tags,
-					});
-				} catch (error) {
-					Sentry.addBreadcrumb({
-						category: 'clan',
-						message: `${logPrefix} Failed to delete premium role after ability loss`,
-						level: 'error',
-						data: { ...tags, error: String(error) },
-					});
-					Sentry.withScope((scope) => {
-						scope.setTags(tags);
-						scope.setTag('operation', 'premiumUnsubscribe');
-						scope.setExtra('context', 'deletePremiumRole failed');
-						Sentry.captureException(error);
-					});
-				}
+			} catch (error) {
+				Sentry.addBreadcrumb({
+					category: 'clan',
+					message: `${logPrefix} Failed to delete premium role after ability loss`,
+					level: 'error',
+					data: { ...tags, error: String(error) },
+				});
+				Sentry.withScope((scope) => {
+					scope.setTags(tags);
+					scope.setTag('operation', 'premiumUnsubscribe');
+					scope.setExtra('context', 'deletePremiumRole failed');
+					Sentry.captureException(error);
+				});
 			}
+		}
 
-			if (canNoLongerGiftLegend) {
+		// Runs for clan owners too - the orphan flow only revokes the gift a week later (if at all)
+		if (premiumMember && canNoLongerGiftLegend) {
+			Sentry.addBreadcrumb({
+				category: 'clan',
+				message: `${logPrefix} Member can no longer gift legend, removing gifted role`,
+				level: 'info',
+				data: { ...tags, giftedToUserId: premiumMember.giftedRoleToUserId },
+			});
+
+			try {
+				await ClanManager.deleteGiftedRole(premiumMember);
 				Sentry.addBreadcrumb({
 					category: 'clan',
-					message: `${logPrefix} Member can no longer gift legend, removing gifted role`,
+					message: `${logPrefix} Gifted role deleted successfully`,
 					level: 'info',
-					data: { ...tags, giftedToUserId: premiumMember.giftedRoleToUserId },
+					data: tags,
 				});
-
-				try {
-					await ClanManager.deleteGiftedRole(premiumMember);
-					Sentry.addBreadcrumb({
-						category: 'clan',
-						message: `${logPrefix} Gifted role deleted successfully`,
-						level: 'info',
-						data: tags,
-					});
-				} catch (error) {
-					Sentry.addBreadcrumb({
-						category: 'clan',
-						message: `${logPrefix} Failed to delete gifted role after ability loss`,
-						level: 'error',
-						data: { ...tags, error: String(error) },
-					});
-					Sentry.withScope((scope) => {
-						scope.setTags(tags);
-						scope.setTag('operation', 'premiumUnsubscribe');
-						scope.setExtra('context', 'deleteGiftedRole failed');
-						Sentry.captureException(error);
-					});
-				}
+			} catch (error) {
+				Sentry.addBreadcrumb({
+					category: 'clan',
+					message: `${logPrefix} Failed to delete gifted role after ability loss`,
+					level: 'error',
+					data: { ...tags, error: String(error) },
+				});
+				Sentry.withScope((scope) => {
+					scope.setTags(tags);
+					scope.setTag('operation', 'premiumUnsubscribe');
+					scope.setExtra('context', 'deleteGiftedRole failed');
+					Sentry.captureException(error);
+				});
 			}
 		}
 
