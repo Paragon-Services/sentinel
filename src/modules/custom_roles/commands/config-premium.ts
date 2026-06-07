@@ -1,7 +1,9 @@
+import { Buffer } from 'node:buffer';
 import { Subcommand, type SubcommandMappingArray } from '@sapphire/plugin-subcommands';
 import { remove } from 'confusables';
 import { ChannelType } from 'discord-api-types/v10';
 import {
+	AttachmentBuilder,
 	PermissionFlagsBits,
 	escapeMarkdown,
 	type Role,
@@ -13,6 +15,10 @@ import type { RoleAbility } from '../../../lib/abilities/RoleAbilities.js';
 import { RoleAbilitiesCalculator, RoleAbilityMap } from '../../../lib/abilities/RoleAbilities.js';
 import { createErrorEmbed, createInfoEmbed } from '../../../lib/utils/createEmbed.js';
 import type { CheckPremiumMemberAbilities, FixMode } from '../../../tasks/checkPremiumMemberAbilities.js';
+
+function csvEscape(value: string): string {
+	return /[\n",]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
+}
 
 export class ConfigPremiumCommand extends Subcommand {
 	public subcommandMappings: SubcommandMappingArray = [
@@ -110,6 +116,11 @@ export class ConfigPremiumCommand extends Subcommand {
 			type: 'method',
 			name: 'check-abilities',
 			chatInputRun: 'checkAbilitiesSubcommand',
+		},
+		{
+			type: 'method',
+			name: 'export-stale-legends',
+			chatInputRun: 'exportStaleLegendsSubcommand',
 		},
 		{
 			type: 'group',
@@ -922,6 +933,13 @@ export class ConfigPremiumCommand extends Subcommand {
 								.setRequired(false),
 						),
 				)
+				.addSubcommand((subcommand) =>
+					subcommand
+						.setName('export-stale-legends')
+						.setDescription(
+							'Export a CSV of Legend role holders with no gift entry (includes Stripe subscribers)',
+						),
+				)
 				.addSubcommandGroup((group) =>
 					group
 						.setName('custom-emojis')
@@ -1097,10 +1115,6 @@ export class ConfigPremiumCommand extends Subcommand {
 			description.push(`🎁 Stale Legend gifts: ${result.totalStaleGifts}`);
 		}
 
-		if (result.totalStrayLegendUsers > 0) {
-			description.push(`👑 Stray Legend role holders: ${result.totalStrayLegendUsers}`);
-		}
-
 		if (result.totalStrayPickUsers > 0) {
 			description.push(`🎟️ Stray subscriber picks: ${result.totalStrayPickUsers} user(s)`);
 		}
@@ -1120,10 +1134,6 @@ export class ConfigPremiumCommand extends Subcommand {
 				description.push(`🔧 Stale Legend gifts revoked: ${result.staleGiftsFixed}`);
 			}
 
-			if (result.strayLegendUsersFixed > 0) {
-				description.push(`🔧 Stray Legend roles removed: ${result.strayLegendUsersFixed}`);
-			}
-
 			if (result.strayPickUsersFixed > 0) {
 				description.push(`🔧 Stray subscriber picks stripped from: ${result.strayPickUsersFixed} user(s)`);
 			}
@@ -1134,7 +1144,7 @@ export class ConfigPremiumCommand extends Subcommand {
 				: fixMode === 'fix-missing' ? 'missing members'
 				: 'mismatches';
 			description.push(
-				`*Removed ${result.fixed} premium member entries, scheduled ${result.orphanedClansFixed} orphaned clans for deletion, revoked ${result.staleGiftsFixed} stale Legend gift(s), removed ${result.strayLegendUsersFixed} stray Legend role(s), and stripped picks from ${result.strayPickUsersFixed} user(s) (${fixedWhat}).*`,
+				`*Removed ${result.fixed} premium member entries, scheduled ${result.orphanedClansFixed} orphaned clans for deletion, revoked ${result.staleGiftsFixed} stale Legend gift(s), and stripped picks from ${result.strayPickUsersFixed} user(s) (${fixedWhat}).*`,
 			);
 		}
 
@@ -1142,6 +1152,75 @@ export class ConfigPremiumCommand extends Subcommand {
 			embeds: [
 				createInfoEmbed(`**Premium Ability Check (${modeLabels[fixMode]})**\n\n${description.join('\n')}`),
 			],
+		});
+	}
+
+	public async exportStaleLegendsSubcommand(interaction: Subcommand.ChatInputCommandInteraction<'cached'>) {
+		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+		const premiumConfig = await this.container.prisma.premiumGuildRoleConfig.findFirst({
+			where: { guildId: interaction.guildId },
+		});
+
+		if (!premiumConfig?.legendRoleId) {
+			await interaction.editReply({
+				embeds: [createErrorEmbed('No Legend role is configured for this server.')],
+			});
+			return;
+		}
+
+		await interaction.guild.members.fetch();
+
+		const legendRole = interaction.guild.roles.cache.get(premiumConfig.legendRoleId);
+
+		if (!legendRole) {
+			await interaction.editReply({
+				embeds: [createErrorEmbed('The configured Legend role no longer exists in this server.')],
+			});
+			return;
+		}
+
+		const giftEntries = await this.container.prisma.premiumMember.findMany({
+			where: { guildId: interaction.guildId, giftedRoleToUserId: { not: null } },
+			select: { giftedRoleToUserId: true },
+		});
+		const giftedUserIds = new Set(giftEntries.map((entry) => entry.giftedRoleToUserId!));
+
+		const staleLooking = legendRole.members.filter((member) => !giftedUserIds.has(member.id));
+
+		if (staleLooking.size === 0) {
+			await interaction.editReply({
+				embeds: [
+					createInfoEmbed('Every Legend role holder is covered by a gift entry - nothing to export.'),
+				],
+			});
+			return;
+		}
+
+		const rows = ['userId,username,displayName,joinedAt'];
+
+		for (const member of staleLooking.values()) {
+			rows.push(
+				[
+					member.id,
+					csvEscape(member.user.username),
+					csvEscape(member.displayName),
+					member.joinedAt?.toISOString() ?? '',
+				].join(','),
+			);
+		}
+
+		const attachment = new AttachmentBuilder(Buffer.from(rows.join('\n'), 'utf8'), {
+			name: `stale-looking-legends-${interaction.guildId}.csv`,
+		});
+
+		await interaction.editReply({
+			embeds: [
+				createInfoEmbed(
+					`Found **${staleLooking.size}** Legend role holder(s) with no gift entry pointing to them (out of ${legendRole.members.size} total holders).\n\n⚠️ This list includes legitimate Stripe subscribers - cross-reference it before removing any roles.`,
+				),
+			],
+			files: [attachment],
 		});
 	}
 

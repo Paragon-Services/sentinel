@@ -23,14 +23,12 @@ export interface CheckPremiumMemberAbilitiesResult {
 	fixed: number;
 	orphanedClansFixed: number;
 	staleGiftsFixed: number;
-	strayLegendUsersFixed: number;
 	strayPickUsersFixed: number;
 	totalChecked: number;
 	totalMismatches: number;
 	totalMissing: number;
 	totalOrphanedClansWithoutTask: number;
 	totalStaleGifts: number;
-	totalStrayLegendUsers: number;
 	totalStrayPickUsers: number;
 }
 
@@ -285,8 +283,6 @@ export class CheckPremiumMemberAbilities extends Task {
 				orphanedClansFixed: 0,
 				totalStaleGifts: 0,
 				staleGiftsFixed: 0,
-				totalStrayLegendUsers: 0,
-				strayLegendUsersFixed: 0,
 				totalStrayPickUsers: 0,
 				strayPickUsersFixed: 0,
 			};
@@ -721,19 +717,17 @@ export class CheckPremiumMemberAbilities extends Task {
 		let totalStrayPickUsers = 0;
 		let strayPickUsersFixed = 0;
 
-		let pickableConfigs: { guildId: string; legendRoleId: string | null; pickableRoleIds: string[] }[] = [];
+		let pickableConfigs: { guildId: string; pickableRoleIds: string[] }[] = [];
 		try {
 			pickableConfigs = await this.container.prisma.premiumGuildRoleConfig.findMany({
 				where: options.guildId ? { guildId: options.guildId } : {},
-				select: { guildId: true, legendRoleId: true, pickableRoleIds: true },
+				select: { guildId: true, pickableRoleIds: true },
 			});
 			addBreadcrumb('Pickable configs query completed', { count: pickableConfigs.length });
 		} catch (error) {
 			addBreadcrumb('Pickable configs query FAILED', { error: String(error) }, 'error');
 			captureError(error as Error, 'checkAbilities: premiumGuildRoleConfig.findMany failed');
 		}
-
-		const fetchedGuildIds = new Set<string>();
 
 		for (const config of pickableConfigs) {
 			if (config.pickableRoleIds.length === 0) {
@@ -749,7 +743,6 @@ export class CheckPremiumMemberAbilities extends Task {
 			try {
 				addBreadcrumb('Fetching all members for pickable check', { guildId: config.guildId });
 				await guild.members.fetch();
-				fetchedGuildIds.add(config.guildId);
 			} catch (error) {
 				addBreadcrumb(
 					'Failed to fetch members for pickable check',
@@ -856,115 +849,11 @@ export class CheckPremiumMemberAbilities extends Task {
 
 		addBreadcrumb('Stray pickable role check completed', { totalStrayPickUsers, strayPickUsersFixed });
 
-		// Catch members who hold the Legend role without a matching gift entry in the database.
-		// The bot is the only thing that assigns this role, so its membership should exactly mirror
-		// the giftedRoleToUserId entries - anything else is a leftover from a failed/missed cleanup.
-		this.container.logger.info(`${LOG_PREFIX} Checking for stray Legend role holders...`);
-		addBreadcrumb('Starting stray Legend role check');
+		// NOTE: Do NOT sweep Legend role holders without a gift entry - the role is also granted
+		// externally to Stripe subscribers, which the bot has no way to identify. Stale gifts are
+		// only detectable through the giftedRoleToUserId entries handled above.
 
-		let totalStrayLegendUsers = 0;
-		let strayLegendUsersFixed = 0;
-
-		for (const config of pickableConfigs) {
-			if (!config.legendRoleId) {
-				continue;
-			}
-
-			const guild = this.container.client.guilds.resolve(config.guildId);
-			if (!guild) {
-				addBreadcrumb('Guild not found for legend config', { guildId: config.guildId }, 'warning');
-				continue;
-			}
-
-			if (!fetchedGuildIds.has(config.guildId)) {
-				try {
-					addBreadcrumb('Fetching all members for legend check', { guildId: config.guildId });
-					await guild.members.fetch();
-					fetchedGuildIds.add(config.guildId);
-				} catch (error) {
-					addBreadcrumb(
-						'Failed to fetch members for legend check',
-						{ guildId: config.guildId, error: String(error) },
-						'error',
-					);
-					captureError(error as Error, 'checkAbilities: members.fetch for legend check failed', {
-						guildId: config.guildId,
-					});
-					continue;
-				}
-			}
-
-			const legendRole = guild.roles.cache.get(config.legendRoleId);
-			if (!legendRole) {
-				addBreadcrumb('Legend role not found in guild', { guildId: config.guildId, legendRoleId: config.legendRoleId }, 'warning');
-				continue;
-			}
-
-			// Re-query gift entries now so revocations made earlier in this run are reflected
-			let validGiftedIds: Set<string>;
-			try {
-				const giftEntries = await this.container.prisma.premiumMember.findMany({
-					where: { guildId: config.guildId, giftedRoleToUserId: { not: null } },
-					select: { giftedRoleToUserId: true },
-				});
-				validGiftedIds = new Set(giftEntries.map((entry) => entry.giftedRoleToUserId!));
-				addBreadcrumb('Valid gift entries loaded', { guildId: config.guildId, count: validGiftedIds.size });
-			} catch (error) {
-				addBreadcrumb('Gift entries query FAILED', { guildId: config.guildId, error: String(error) }, 'error');
-				captureError(error as Error, 'checkAbilities: gift entries query failed', { guildId: config.guildId });
-				continue;
-			}
-
-			for (const [memberId, member] of legendRole.members) {
-				if (validGiftedIds.has(memberId)) {
-					continue;
-				}
-
-				totalStrayLegendUsers++;
-
-				this.container.logger.warn(
-					`${LOG_PREFIX} [STRAY LEGEND] User ${member.user.tag} (${memberId}) in guild ${guild.name} (${guild.id}) has the Legend role but no gift entry points to them.`,
-				);
-				addBreadcrumb(
-					'STRAY LEGEND detected',
-					{ userId: memberId, guildId: config.guildId, legendRoleId: config.legendRoleId },
-					'warning',
-				);
-				captureWarning(`Stray Legend role holder: ${member.user.tag} (${memberId})`, {
-					userId: memberId,
-					guildId: config.guildId,
-					legendRoleId: config.legendRoleId,
-				});
-
-				if (fixMode === 'fix-mismatches' || fixMode === 'fix-all') {
-					try {
-						await member.roles.remove(
-							config.legendRoleId,
-							'Stray Legend role: no gift entry points to this member (reconciler)',
-						);
-						strayLegendUsersFixed++;
-						this.container.logger.info(
-							`${LOG_PREFIX} [FIXED] Removed stray Legend role from ${member.user.tag} (${memberId}) in guild ${guild.name} (${guild.id})`,
-						);
-					} catch (error) {
-						addBreadcrumb(
-							'Failed to remove stray Legend role',
-							{ userId: memberId, guildId: config.guildId, error: String(error) },
-							'error',
-						);
-						captureError(error as Error, 'checkAbilities: remove stray Legend role failed', {
-							userId: memberId,
-							guildId: config.guildId,
-							legendRoleId: config.legendRoleId,
-						});
-					}
-				}
-			}
-		}
-
-		addBreadcrumb('Stray Legend role check completed', { totalStrayLegendUsers, strayLegendUsersFixed });
-
-		const summary = `Checked ${totalChecked} members, found ${totalMismatches} mismatches, ${totalMissing} missing${totalOrphanedClansWithoutTask > 0 ? `, ${totalOrphanedClansWithoutTask} orphaned clans` : ''}${totalStaleGifts > 0 ? `, ${totalStaleGifts} stale Legend gifts` : ''}${totalStrayLegendUsers > 0 ? `, ${totalStrayLegendUsers} stray Legend holders` : ''}${totalStrayPickUsers > 0 ? `, ${totalStrayPickUsers} stray pick users` : ''}${fixMode === 'dry-run' ? '' : `, fixed ${fixed} members, scheduled ${orphanedClansFixed} orphaned clans for deletion, revoked ${staleGiftsFixed} stale Legend gifts, removed the Legend role from ${strayLegendUsersFixed} stray holders, and stripped picks from ${strayPickUsersFixed} users`}.`;
+		const summary = `Checked ${totalChecked} members, found ${totalMismatches} mismatches, ${totalMissing} missing${totalOrphanedClansWithoutTask > 0 ? `, ${totalOrphanedClansWithoutTask} orphaned clans` : ''}${totalStaleGifts > 0 ? `, ${totalStaleGifts} stale Legend gifts` : ''}${totalStrayPickUsers > 0 ? `, ${totalStrayPickUsers} stray pick users` : ''}${fixMode === 'dry-run' ? '' : `, fixed ${fixed} members, scheduled ${orphanedClansFixed} orphaned clans for deletion, revoked ${staleGiftsFixed} stale Legend gifts, and stripped picks from ${strayPickUsersFixed} users`}.`;
 
 		this.container.logger.info(`${LOG_PREFIX} Completed. ${summary}`);
 		addBreadcrumb('checkAbilities completed', {
@@ -976,8 +865,6 @@ export class CheckPremiumMemberAbilities extends Task {
 			orphanedClansFixed,
 			totalStaleGifts,
 			staleGiftsFixed,
-			totalStrayLegendUsers,
-			strayLegendUsersFixed,
 			totalStrayPickUsers,
 			strayPickUsersFixed,
 			fixMode,
@@ -992,8 +879,6 @@ export class CheckPremiumMemberAbilities extends Task {
 			orphanedClansFixed,
 			totalStaleGifts,
 			staleGiftsFixed,
-			totalStrayLegendUsers,
-			strayLegendUsersFixed,
 			totalStrayPickUsers,
 			strayPickUsersFixed,
 		};
