@@ -4,7 +4,8 @@ import {
 	MessageFlags,
 	type MessageComponentInteraction,
 	type RoleColorsResolvable,
-	type RoleEditOptions, type RoleCreateOptions,
+	type RoleEditOptions,
+	type RoleCreateOptions,
 } from 'discord.js';
 import looksSame, { type Color } from 'looks-same';
 import magicBytes from 'magic-bytes.js';
@@ -257,7 +258,10 @@ export class CustomRoleCommand extends Subcommand {
 		}
 
 		try {
-			const newRole = oldRole ? await oldRole.edit(roleData) : await interaction.guild.roles.create(roleData as RoleCreateOptions);
+			const newRole =
+				oldRole ?
+					await oldRole.edit(roleData)
+				:	await interaction.guild.roles.create(roleData as RoleCreateOptions);
 
 			if (!oldRole) {
 				await interaction.member.roles.add(newRole.id, 'Setup premium custom role');

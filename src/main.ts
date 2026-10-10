@@ -1,13 +1,13 @@
 import process from 'node:process';
 import { inspect } from 'node:util';
 import '@sapphire/plugin-logger/register';
+import { Disbots, instrumentSapphire } from '@disbots/sdk';
 import { ApplicationCommandRegistries, container, LogLevel, RegisterBehavior } from '@sapphire/framework';
 import { Time } from '@sapphire/time-utilities';
 import * as Sentry from '@sentry/node';
 import { createColors } from 'colorette';
 import { GuildMember, type User } from 'discord.js';
 import { ActivityType, IntentsBitField, Options, Partials } from 'discord.js';
-import { Disbots, instrumentSapphire } from '@disbots/sdk';
 import { UtilsBot } from './lib/UtilsBot.js';
 
 if (process.env.SENTRY_DSN) {

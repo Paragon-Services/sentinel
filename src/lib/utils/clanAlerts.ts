@@ -39,9 +39,7 @@ export async function sendClanAlert(
 
 		const guild = container.client.guilds.cache.get(guildId);
 		const channel = (await guild?.channels.fetch(config.clanAlertChannelId).catch(() => null)) as
-			| GuildTextBasedChannel
-			| null
-			| undefined;
+			GuildTextBasedChannel | null | undefined;
 
 		if (!channel?.isTextBased()) {
 			return;

@@ -31,15 +31,15 @@ Deadlock is a private utility bot for the Discord servers we operate. It is not 
 
 Features:
 
--   Vote kick: members in a voice channel can vote to remove a disruptive user from it. Configurable threshold, time limit, per-user cooldowns, and a moderator log entry for every completed vote.
--   Media-only channels: staff can mark a channel as media-only. Messages posted there without an attachment are removed with a short self-deleting notice.
--   Auto-pinned messages: a staff-written message the bot reposts on an interval so it stays at the bottom of a channel.
--   Polls: slash-command polls with button voting and automatic results when they close.
--   Ban syncing: mirrors bans across the servers we operate.
--   Invite pruning: removes expired or unwanted invites.
--   Notifications: sends a staff-written message once to each member holding a given role.
--   Subscriber perks: subscribers can create a personal custom role, upload a custom emoji, gift a cosmetic role to one other member, and create or join a clan with its own role and private channel.
--   Clan custom commands: a clan can set up its own text shortcuts through a slash command. Its members can then trigger one by typing an exclamation mark followed by the trigger word, and the bot replies with the text or media the clan configured.
+- Vote kick: members in a voice channel can vote to remove a disruptive user from it. Configurable threshold, time limit, per-user cooldowns, and a moderator log entry for every completed vote.
+- Media-only channels: staff can mark a channel as media-only. Messages posted there without an attachment are removed with a short self-deleting notice.
+- Auto-pinned messages: a staff-written message the bot reposts on an interval so it stays at the bottom of a channel.
+- Polls: slash-command polls with button voting and automatic results when they close.
+- Ban syncing: mirrors bans across the servers we operate.
+- Invite pruning: removes expired or unwanted invites.
+- Notifications: sends a staff-written message once to each member holding a given role.
+- Subscriber perks: subscribers can create a personal custom role, upload a custom emoji, gift a cosmetic role to one other member, and create or join a clan with its own role and private channel.
+- Clan custom commands: a clan can set up its own text shortcuts through a slash command. Its members can then trigger one by typing an exclamation mark followed by the trigger word, and the bot replies with the text or media the clan configured.
 
 ---
 
@@ -51,18 +51,18 @@ Most of Deadlock's features react to members joining, leaving, or having their r
 
 GUILD_MEMBER_ADD:
 
--   Ban syncing checks the joining member against the shared ban list and bans them if they are banned in another of our servers.
--   Subscriber perks restore a gifted cosmetic role to a returning member still entitled to it.
+- Ban syncing checks the joining member against the shared ban list and bans them if they are banned in another of our servers.
+- Subscriber perks restore a gifted cosmetic role to a returning member still entitled to it.
 
 GUILD_MEMBER_UPDATE:
 
--   Subscriber perks are revoked when a member loses the subscriber role: their custom role is deleted, their clan is marked for deletion, the cosmetic role they gifted to another member is taken back, and any self-assigned perk roles are stripped. If they regain the role, a clan that was marked for deletion is restored.
--   Visible rank roles keep the rank a member displays in sync with the rank they hold.
--   Notifications send a member their notification once when they gain the targeted role.
+- Subscriber perks are revoked when a member loses the subscriber role: their custom role is deleted, their clan is marked for deletion, the cosmetic role they gifted to another member is taken back, and any self-assigned perk roles are stripped. If they regain the role, a clan that was marked for deletion is restored.
+- Visible rank roles keep the rank a member displays in sync with the rank they hold.
+- Notifications send a member their notification once when they gain the targeted role.
 
 GUILD_MEMBER_REMOVE:
 
--   Subscriber perks clean up the leaving member's custom role, clan ownership, and gifted role.
+- Subscriber perks clean up the leaving member's custom role, clan ownership, and gifted role.
 
 Full member fetch at startup and in a nightly reconciliation task, so bans and subscriber perks that drifted while the bot was down get corrected.
 
@@ -119,17 +119,17 @@ What to cover when re-recording:
 
 **Server Members**, at least two of:
 
--   Removing the subscriber role from a test account, bot deletes their custom role and orphans their clan
--   Banning a test account in server A, showing it auto-banned when it joins server B
--   A test account gaining a notification-targeted role and being sent the notification
--   A test account gaining a rank role, bot updates the rank role it displays
+- Removing the subscriber role from a test account, bot deletes their custom role and orphans their clan
+- Banning a test account in server A, showing it auto-banned when it joins server B
+- A test account gaining a notification-targeted role and being sent the notification
+- A test account gaining a rank role, bot updates the rank role it displays
 
 **Message Content**, one clip covering both:
 
--   `/custom-command set` creating a trigger, then typing `!trigger` in chat and the bot replying
--   Text-only message in a media-only channel, deleted with the notice
--   Then an image in the same channel, stays
--   Optionally `/media-only-messages` configuring the channel, showing it is opt-in per channel
+- `/custom-command set` creating a trigger, then typing `!trigger` in chat and the bot replying
+- Text-only message in a media-only channel, deleted with the notice
+- Then an image in the same channel, stays
+- Optionally `/media-only-messages` configuring the channel, showing it is opt-in per channel
 
 ---
 

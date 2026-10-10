@@ -1,14 +1,16 @@
 import { RoleSyncType } from '@prisma/client';
 import { ApplyOptions } from '@sapphire/decorators';
 import { Events, Listener, Result } from '@sapphire/framework';
-import type { GuildMember } from 'discord.js';
+import type { GuildMember, PartialGuildMember } from 'discord.js';
 import { LogPrefix } from '../../lib/utils/logPrefix.js';
 
 const header = LogPrefix.ROLE_SYNC;
 
 @ApplyOptions<Listener.Options>({ event: Events.GuildMemberUpdate, name: 'SyncRole' })
 export class SyncRole extends Listener {
-	public async run(oldMember: GuildMember, newMember: GuildMember) {
+	public async run(oldMember: GuildMember | PartialGuildMember, newMember: GuildMember): Promise<void> {
+		// A partial oldMember has an empty role cache, so every current role shows up as gained. The adds below
+		// are skipped when the destination member already has the role, which keeps that case a cheap reconcile.
 		const roleDifference = newMember.roles.cache.difference(oldMember.roles.cache);
 
 		for (const role of roleDifference.values()) {
@@ -28,13 +30,21 @@ export class SyncRole extends Listener {
 					continue;
 				}
 
-				const maybeDestinationMember = await Result.fromAsync(async () =>
-					destinationGuild.members.fetch(newMember.id),
+				const maybeDestinationMember = await Result.fromAsync(
+					async () =>
+						destinationGuild.members.cache.get(newMember.id) ??
+						destinationGuild.members.fetch(newMember.id),
 				);
 
 				await maybeDestinationMember.inspectAsync(async (destinationMember) => {
+					const destinationHasRole = destinationMember.roles.cache.has(entry.destination_role_id);
+
 					// Had the role before, but not anymore
 					if (oldMember.roles.cache.has(role.id)) {
+						if (!destinationHasRole) {
+							return;
+						}
+
 						this.container.logger.info(
 							`${header}Removing role ${destinationRole.name} (${destinationRole.id}) from ${destinationMember.user.tag} (${destinationMember.user.id}) in guild ${destinationGuild.name} as they lost it from guild ${newMember.guild.name}`,
 						);
@@ -48,6 +58,10 @@ export class SyncRole extends Listener {
 							this.container.logger.warn(`${header}Failed to process role sync`, error);
 						}
 					} else {
+						if (destinationHasRole) {
+							return;
+						}
+
 						this.container.logger.info(
 							`${header}Adding role ${destinationRole.name} (${destinationRole.id}) to ${destinationMember.user.tag} (${destinationMember.user.id}) in guild ${destinationGuild.name} as they gained it in ${newMember.guild.name}`,
 						);

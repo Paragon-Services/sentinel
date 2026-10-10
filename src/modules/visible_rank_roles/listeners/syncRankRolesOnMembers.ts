@@ -2,7 +2,6 @@ import { RoleSyncType } from '@prisma/client';
 import { ApplyOptions } from '@sapphire/decorators';
 import { Events, Listener, container } from '@sapphire/framework';
 import type { GuildMember, PartialGuildMember } from 'discord.js';
-import { ensureFullMember } from '../../../lib/utils.js';
 
 async function removeRoleFromMember(member: GuildMember, roleId: string) {
 	try {
@@ -30,10 +29,9 @@ async function addRoleToMember(member: GuildMember, roleId: string) {
 
 @ApplyOptions<Listener.Options>({ event: Events.GuildMemberUpdate })
 export class SyncRankRoles extends Listener<typeof Events.GuildMemberUpdate> {
-	public override async run(oldMember: GuildMember | PartialGuildMember, newMember: GuildMember) {
-		await ensureFullMember(oldMember);
-		await ensureFullMember(newMember);
-
+	public override async run(oldMember: GuildMember | PartialGuildMember, newMember: GuildMember): Promise<void> {
+		// A partial oldMember has an empty role cache, so it reads as "had no rank" and only the add path can
+		// trigger. That is still correct as a reconcile, as long as the add is skipped when nothing is missing.
 		const memberData = await this.container.prisma.guildMember.findUnique({
 			where: { userId_guildId: { guildId: newMember.guild.id, userId: newMember.id } },
 		});
@@ -65,7 +63,7 @@ export class SyncRankRoles extends Listener<typeof Events.GuildMemberUpdate> {
 				}
 			}
 			// Didn't have the rank, now they do -> add the visible role
-			else if (!hadRankRole && hasRankRole) {
+			else if (!hadRankRole && hasRankRole && !hasVisibleRole) {
 				await addRoleToMember(newMember, visibleRankRole);
 			}
 		}

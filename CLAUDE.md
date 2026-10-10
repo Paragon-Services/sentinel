@@ -6,23 +6,23 @@
 
 **Key Features:**
 
--   Vote kick system for voice channel moderation
--   Auto-pinned messages with scheduled updates
--   Poll creation and management
--   Media-only channel enforcement
--   Role and ban synchronization across guilds
--   Premium clan system with custom roles and channels
--   Role-based notification system
--   Invite pruning and moderation tools
+- Vote kick system for voice channel moderation
+- Auto-pinned messages with scheduled updates
+- Poll creation and management
+- Media-only channel enforcement
+- Role and ban synchronization across guilds
+- Premium clan system with custom roles and channels
+- Role-based notification system
+- Invite pruning and moderation tools
 
 ## Technology Stack
 
--   **Runtime:** Node.js v16+ (LTS recommended)
--   **Language:** TypeScript (ES2022 target, strict mode)
--   **Framework:** Sapphire Framework v5 (@sapphire/framework)
--   **Discord Library:** discord.js v14.22.1
--   **Database:** PostgreSQL with Prisma ORM v5.8.1
--   **Code Quality:** ESLint + Prettier (neon config)
+- **Runtime:** Node.js v16+ (LTS recommended)
+- **Language:** TypeScript (ES2022 target, strict mode)
+- **Framework:** Sapphire Framework v5 (@sapphire/framework)
+- **Discord Library:** discord.js v14.22.1
+- **Database:** PostgreSQL with Prisma ORM v5.8.1
+- **Code Quality:** ESLint + Prettier (neon config)
 
 ## Project Structure
 
@@ -47,12 +47,12 @@ src/
 
 ### Key Directories Explained
 
--   **`commands/`**: Slash commands in the root directory are core bot features
--   **`modules/`**: Self-contained feature modules with their own commands/listeners/handlers
--   **`listeners/`**: Event-based logic (message creates, deletes, reactions, etc.)
--   **`tasks/`**: Scheduled jobs managed by ScheduleManager
--   **`interaction-handlers/`**: Handle Discord component interactions (buttons, select menus)
--   **`lib/abilities/`**: Permission checking system for clans and role management
+- **`commands/`**: Slash commands in the root directory are core bot features
+- **`modules/`**: Self-contained feature modules with their own commands/listeners/handlers
+- **`listeners/`**: Event-based logic (message creates, deletes, reactions, etc.)
+- **`tasks/`**: Scheduled jobs managed by ScheduleManager
+- **`interaction-handlers/`**: Handle Discord component interactions (buttons, select menus)
+- **`lib/abilities/`**: Permission checking system for clans and role management
 
 ## Architecture Patterns
 
@@ -60,10 +60,10 @@ src/
 
 The bot uses the Sapphire Framework, which provides:
 
--   **Piece-based architecture**: Commands, listeners, and handlers are auto-loaded
--   **Plugin system**: Subcommands plugin for complex command structures
--   **Preconditions**: Permission checks before command execution
--   **Utilities**: Decorators, paginated messages, and Discord helpers
+- **Piece-based architecture**: Commands, listeners, and handlers are auto-loaded
+- **Plugin system**: Subcommands plugin for complex command structures
+- **Preconditions**: Permission checks before command execution
+- **Utilities**: Decorators, paginated messages, and Discord helpers
 
 ### Command Structure
 
@@ -105,10 +105,10 @@ export class MySubcommandCommand extends Subcommand {
 
 Modules are self-contained features in `src/modules/`. Each module can have:
 
--   `commands/`: Module-specific slash commands
--   `listeners/`: Module-specific event listeners
--   `interaction-handlers/`: Module-specific button/menu handlers
--   Shared utilities or logic within the module directory
+- `commands/`: Module-specific slash commands
+- `listeners/`: Module-specific event listeners
+- `interaction-handlers/`: Module-specific button/menu handlers
+- Shared utilities or logic within the module directory
 
 Modules are automatically loaded by Sapphire's piece system.
 
@@ -149,20 +149,20 @@ await ScheduleManager.schedule(MyTask, guildId, date, data);
 
 Key Prisma models:
 
--   **`Schedule`**: Scheduled task entries (task name, time, data)
--   **`VoteKick`**: Vote kick records with voter tracking
--   **`User`**: User kick counts and timeout tracking
--   **`AutoPin`**: Auto-pinned messages with scheduling info
--   **`Poll`**, **`PollAnswer`**: Poll data and user responses
--   **`MessageOnlyChannel`**: Channels requiring media attachments
--   **`RoleSync`**: Cross-guild role synchronization
--   **`SharedGuildBan`**: Synchronized bans across guilds
--   **`PremiumMember`**, **`PremiumGuildRoleConfig`**: Premium features
--   **`Clan`**, **`ClanMember`**: Clan system
--   **`ClanEmojiCache`**: Caches clan role icon hashes to detect changes and avoid unnecessary re-uploads
--   **`ClanHistoryEvent`**: Append-only audit trail of clan lifecycle events (creation, orphan/restore, gift revoke/restore, deletion); survives clan deletion
--   **`RoleAbilities`**: Permission management for roles
--   **`Notification`**, **`UserNotification`**: Notification system
+- **`Schedule`**: Scheduled task entries (task name, time, data)
+- **`VoteKick`**: Vote kick records with voter tracking
+- **`User`**: User kick counts and timeout tracking
+- **`AutoPin`**: Auto-pinned messages with scheduling info
+- **`Poll`**, **`PollAnswer`**: Poll data and user responses
+- **`MessageOnlyChannel`**: Channels requiring media attachments
+- **`RoleSync`**: Cross-guild role synchronization
+- **`SharedGuildBan`**: Synchronized bans across guilds
+- **`PremiumMember`**, **`PremiumGuildRoleConfig`**: Premium features
+- **`Clan`**, **`ClanMember`**: Clan system
+- **`ClanEmojiCache`**: Caches clan role icon hashes to detect changes and avoid unnecessary re-uploads
+- **`ClanHistoryEvent`**: Append-only audit trail of clan lifecycle events (creation, orphan/restore, gift revoke/restore, deletion); survives clan deletion
+- **`RoleAbilities`**: Permission management for roles
+- **`Notification`**, **`UserNotification`**: Notification system
 
 ### Running Migrations
 
@@ -220,24 +220,24 @@ npm start
 
 ### Scripts
 
--   `npm start`: Clean build and run the bot
--   `npm run build`: Compile TypeScript to `dist/`
--   `npm run cleanbuild`: Remove `dist/` and rebuild
--   `npm run watch`: Watch mode for development
--   `npm run lint`: Check code style with ESLint
--   `npm run format`: Auto-format code with Prettier and ESLint
--   `npm run db:backup`: Dump the database to `backups/` (gzipped, timestamped, keeps the last 20)
--   `npm run db:restore`: List dumps, or restore one (needs an explicit `--yes`)
--   `npm run db:migrate:deploy`: Apply pending migrations, then regenerate the Prisma client
--   `npm run db:migrate:deploy:safe`: Back up first, then `db:migrate:deploy`. Use this when deploying
+- `npm start`: Clean build and run the bot
+- `npm run build`: Compile TypeScript to `dist/`
+- `npm run cleanbuild`: Remove `dist/` and rebuild
+- `npm run watch`: Watch mode for development
+- `npm run lint`: Check code style with ESLint
+- `npm run format`: Auto-format code with Prettier and ESLint
+- `npm run db:backup`: Dump the database to `backups/` (gzipped, timestamped, keeps the last 20)
+- `npm run db:restore`: List dumps, or restore one (needs an explicit `--yes`)
+- `npm run db:migrate:deploy`: Apply pending migrations, then regenerate the Prisma client
+- `npm run db:migrate:deploy:safe`: Back up first, then `db:migrate:deploy`. Use this when deploying
 
 ### Testing & Deployment
 
 **Testing Approach**: Manual testing in Discord
 
--   Test new commands and features in a test server or channel
--   Verify database changes don't break existing functionality
--   Check error handling and edge cases
+- Test new commands and features in a test server or channel
+- Verify database changes don't break existing functionality
+- Check error handling and edge cases
 
 **Deployment**:
 
@@ -282,19 +282,19 @@ The Prisma client must be regenerated **before** that restart builds. `prisma mi
 
 The clan system allows premium members to create clans with:
 
--   Custom clan roles (with color validation to prevent conflicts)
--   Clan-specific channels
--   Member management (join requests, kicks, ownership transfer)
--   Automatic directory updates
--   Orphan clan cleanup
+- Custom clan roles (with color validation to prevent conflicts)
+- Clan-specific channels
+- Member management (join requests, kicks, ownership transfer)
+- Automatic directory updates
+- Orphan clan cleanup
 
 **Key Components:**
 
--   **Commands**: `/clan`, `/custom-role`, `/gift`, `/config-premium`
--   **Abilities**: `ClanManager` handles permission checks
--   **Legend gifts**: `lib/abilities/legendGift.ts` applies, revokes, and restores the gifted Legend role (kept separate from `ClanManager` since gifting is a premium perk, not a clan feature). The `restoreGiftedRoleOnJoin` listener re-adds it when a returning member is still an active gift target (e.g. a recipient who was banned/kicked and rejoined); `checkPremiumMemberAbilities` reconciles the same nightly
--   **Tasks**: `UpdateClanDirectory`, `deleteOrphanClan`
--   **Database**: `Clan`, `ClanMember`, `PremiumMember`, `RoleAbilities`, `ClanEmojiCache`, `ClanHistoryEvent`
+- **Commands**: `/clan`, `/custom-role`, `/gift`, `/config-premium`
+- **Abilities**: `ClanManager` handles permission checks
+- **Legend gifts**: `lib/abilities/legendGift.ts` applies, revokes, and restores the gifted Legend role (kept separate from `ClanManager` since gifting is a premium perk, not a clan feature). The `restoreGiftedRoleOnJoin` listener re-adds it when a returning member is still an active gift target (e.g. a recipient who was banned/kicked and rejoined); `checkPremiumMemberAbilities` reconciles the same nightly
+- **Tasks**: `UpdateClanDirectory`, `deleteOrphanClan`
+- **Database**: `Clan`, `ClanMember`, `PremiumMember`, `RoleAbilities`, `ClanEmojiCache`, `ClanHistoryEvent`
 
 **Color Validation**: Uses `looks-same` library to prevent clan roles from having similar colors to staff roles.
 
@@ -302,12 +302,12 @@ The clan system allows premium members to create clans with:
 
 **Clan Categories**: A guild holds a list of them in `PremiumGuildRoleConfig.clanCategoryIds`, managed with `/config-premium clan-categories list|add|remove`. `ClanManager.resolveClanCategory()` fills them in visual order (topmost first) and creates a new one when they are all full:
 
--   **Ordering** comes from discord.js' computed `GuildChannel#position`, which already applies Discord's own rules, breaking ties on equal raw positions by snowflake ascending. Never sort on `rawPosition` — reordering the categories in Discord is the only intended way to change fill priority, so no separate ordering config exists.
--   **Overflow** clones the bottom-most category via `clone()`, which carries the permission overwrites over. This matters: `createClanChannel` calls `lockPermissions()`, so a clan channel inherits its parent category's overwrites. Never create the overflow category from scratch. `clone()` also copies the source's raw position, which keeps the new category adjacent to the others.
--   **Channel limits** are handled reactively only. Do not block on a hardcoded guild channel cap: these servers may have a raised one, and Discord refusing the create (`MaximumNumberOfGuildChannelsReached`) is the only authority. `GUILD_CHANNEL_WARNING_THRESHOLD` exists purely to advise staff.
--   **Alerts** go to `PremiumGuildRoleConfig.clanAlertChannelId` via `lib/utils/clanAlerts.ts`, plus the logger and Sentry.
--   **Concurrency** is handled by `withGuildLock` (`lib/utils/guildLock.ts`), so two simultaneous clan creations cannot each create a category. `createClan` resolves the category once and passes it down to `createClanChannel`; resolving in both would clone twice.
--   Configured IDs that no longer resolve are pruned automatically, but only when the guild itself resolved — otherwise an uncached guild would wipe the config.
+- **Ordering** comes from discord.js' computed `GuildChannel#position`, which already applies Discord's own rules, breaking ties on equal raw positions by snowflake ascending. Never sort on `rawPosition` — reordering the categories in Discord is the only intended way to change fill priority, so no separate ordering config exists.
+- **Overflow** clones the bottom-most category via `clone()`, which carries the permission overwrites over. This matters: `createClanChannel` calls `lockPermissions()`, so a clan channel inherits its parent category's overwrites. Never create the overflow category from scratch. `clone()` also copies the source's raw position, which keeps the new category adjacent to the others.
+- **Channel limits** are handled reactively only. Do not block on a hardcoded guild channel cap: these servers may have a raised one, and Discord refusing the create (`MaximumNumberOfGuildChannelsReached`) is the only authority. `GUILD_CHANNEL_WARNING_THRESHOLD` exists purely to advise staff.
+- **Alerts** go to `PremiumGuildRoleConfig.clanAlertChannelId` via `lib/utils/clanAlerts.ts`, plus the logger and Sentry.
+- **Concurrency** is handled by `withGuildLock` (`lib/utils/guildLock.ts`), so two simultaneous clan creations cannot each create a category. `createClan` resolves the category once and passes it down to `createClanChannel`; resolving in both would clone twice.
+- Configured IDs that no longer resolve are pruned automatically, but only when the guild itself resolved — otherwise an uncached guild would wipe the config.
 
 **Orphan Grace Period**: `ORPHAN_GRACE_PERIOD` in `ClanManager` is the single source of truth, used by both `makeClanOrphan` and `checkPremiumMemberAbilities` as well as the user-facing strings. Changing it only affects new orphans; deletion tasks already in the `schedules` table keep their original date, and rewriting them retroactively can push a date into the past and delete clans immediately.
 
@@ -315,45 +315,45 @@ The clan system allows premium members to create clans with:
 
 Democratic voice channel moderation:
 
--   Users in a voice channel can vote to kick someone
--   Configurable vote thresholds
--   Cooldowns and tracking in database
--   Automatic cleanup of expired votes
+- Users in a voice channel can vote to kick someone
+- Configurable vote thresholds
+- Cooldowns and tracking in database
+- Automatic cleanup of expired votes
 
 ### Auto-Pin System
 
 Recurring messages that stay pinned to the bottom of a channel:
 
--   Messages automatically reposted at intervals
--   Can be configured per channel
--   Scheduled via `ScheduleManager`
+- Messages automatically reposted at intervals
+- Can be configured per channel
+- Scheduled via `ScheduleManager`
 
 ### Abilities/Permission System (`lib/abilities`)
 
 Custom permission system for managing role-based abilities:
 
--   Guild-specific and multi-guild abilities
--   Role color validation
--   Forbidden role name checking
--   Used primarily for clan and custom role management
+- Guild-specific and multi-guild abilities
+- Role color validation
+- Forbidden role name checking
+- Used primarily for clan and custom role management
 
 ## Performance Considerations
 
 The bot has custom Discord.js cache settings to reduce memory usage:
 
--   **Message cache**: Limited to 50 messages
--   **User cache**: Limited to 100 users (bot user never removed)
--   **Sweepers**: Configured for automatic cleanup of old cache entries
+- **Message cache**: Limited to 50 messages
+- **User cache**: Limited to 100 users (bot user never removed)
+- **Sweepers**: Configured for automatic cleanup of old cache entries
 
 These settings are in `src/lib/UtilsBot.ts`.
 
 ## Code Style & Standards
 
--   **TypeScript**: Strict mode enabled, ES2022 target
--   **ESLint**: Uses `@neon-utils/prettier-config` and `@neon-utils/eslint-config-ts`
--   **Formatting**: Prettier with 2-space tabs, single quotes, trailing commas
--   **Imports**: Organized and explicit, no wildcard imports
--   **Error Handling**: Use `UserError` class for user-facing errors
+- **TypeScript**: Strict mode enabled, ES2022 target
+- **ESLint**: Uses `@neon-utils/prettier-config` and `@neon-utils/eslint-config-ts`
+- **Formatting**: Prettier with 2-space tabs, single quotes, trailing commas
+- **Imports**: Organized and explicit, no wildcard imports
+- **Error Handling**: Use `UserError` class for user-facing errors
 
 ### Error Handling Pattern
 
@@ -369,33 +369,33 @@ throw new Error('Unexpected database error');
 
 ## Important Notes
 
--   **Production bot**: Changes affect live users, test thoroughly
--   **No major gotchas**: Codebase is straightforward and well-structured
--   **Prisma queries**: Be mindful of N+1 queries and use `include` strategically
--   **Discord rate limits**: Use built-in discord.js rate limit handling
--   **Scheduled tasks**: Tasks run in-process, long-running tasks should be async
--   **Caching**: Be aware of Discord cache limitations, refetch data when needed
--   **Git commits**: Do NOT add Co-Authored-By lines to commits. Do NOT commit without explicit approval each time - approval is one-time only, not blanket permission for future commits
--   **"Take note"**: When told to "take note", add it to this file (CLAUDE.md), don't just acknowledge
--   **Pre-existing errors**: When running lint/format and encountering pre-existing errors in files not modified by the current task, fix them too
+- **Production bot**: Changes affect live users, test thoroughly
+- **No major gotchas**: Codebase is straightforward and well-structured
+- **Prisma queries**: Be mindful of N+1 queries and use `include` strategically
+- **Discord rate limits**: Use built-in discord.js rate limit handling
+- **Scheduled tasks**: Tasks run in-process, long-running tasks should be async
+- **Caching**: Be aware of Discord cache limitations, refetch data when needed
+- **Git commits**: Do NOT add Co-Authored-By lines to commits. Do NOT commit without explicit approval each time - approval is one-time only, not blanket permission for future commits
+- **"Take note"**: When told to "take note", add it to this file (CLAUDE.md), don't just acknowledge
+- **Pre-existing errors**: When running lint/format and encountering pre-existing errors in files not modified by the current task, fix them too
 
 ## Resources
 
--   [Sapphire Framework Docs](https://www.sapphirejs.dev/)
--   [discord.js Guide](https://discordjs.guide/)
--   [Prisma Documentation](https://www.prisma.io/docs/)
--   [Discord API Types](https://discord-api-types.dev/)
+- [Sapphire Framework Docs](https://www.sapphirejs.dev/)
+- [discord.js Guide](https://discordjs.guide/)
+- [Prisma Documentation](https://www.prisma.io/docs/)
+- [Discord API Types](https://discord-api-types.dev/)
 
 ## Local Documentation
 
 Additional reference docs are in `.claude/*.local.md` (gitignored). Currently available:
 
--   `components-v2.local.md` - Discord Components V2 API reference and patterns
+- `components-v2.local.md` - Discord Components V2 API reference and patterns
 
 ## Getting Help
 
 For questions or issues:
 
--   Check the Sapphire Framework documentation
--   Review similar existing commands/listeners for patterns
--   The codebase is well-organized - look at similar features for guidance
+- Check the Sapphire Framework documentation
+- Review similar existing commands/listeners for patterns
+- The codebase is well-organized - look at similar features for guidance

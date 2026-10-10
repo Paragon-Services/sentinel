@@ -744,7 +744,7 @@ export class ClanCommand extends Subcommand {
 
 		const { context, confirmed } = await waitForButtonConfirm(
 			interaction,
-			`# ⚠️ WARNING\n**You are about to leave the clan "${customRole!.name}" owned by <@${clanOwnerId}>**\nYou will also lose the custom role linked to it, if you claimed it.\n\nAre you sure you want to leave the clan?`,
+			`# ⚠️ WARNING\n**You are about to leave the clan "${customRole!.name}"**\nYou will also lose the custom role linked to it, if you claimed it.\n\nAre you sure you want to leave the clan?`,
 			{
 				confirmText: 'Yes',
 				cancelText: 'No',
@@ -815,7 +815,7 @@ export class ClanCommand extends Subcommand {
 				content: '',
 				embeds: [
 					createInfoEmbed(
-						`# 🚪 You left the clan\nYou have been removed from the clan "${customRole!.name}" owned by <@${clanOwnerId}>.`,
+						`# 🚪 You left the clan\nYou have been removed from the clan "${customRole!.name}".`,
 					),
 				],
 				components: [],
@@ -1146,8 +1146,9 @@ export class ClanCommand extends Subcommand {
 				return interaction.respond([{ name: 'No visible clans found', value: '__NONE__' }]);
 			}
 
-			const allRoles = await interaction.guild.roles.fetch();
-			const clanRoles = allRoles.filter((role) => visibleClans.some((clan) => clan.customRoleId === role.id));
+			const clanRoles = interaction.guild.roles.cache.filter((role) =>
+				visibleClans.some((clan) => clan.customRoleId === role.id),
+			);
 
 			const premiumMembers = await this.container.prisma.premiumMember.findMany({
 				where: {

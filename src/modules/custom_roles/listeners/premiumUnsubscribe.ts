@@ -1,18 +1,20 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Events, Listener } from '@sapphire/framework';
 import * as Sentry from '@sentry/node';
-import type { GuildMember } from 'discord.js';
+import type { GuildMember, PartialGuildMember } from 'discord.js';
 import { ClanManager } from '../../../lib/abilities/ClanManager.js';
 import { MemberAbilities } from '../../../lib/abilities/MemberAbilities.js';
 import { deleteGiftedRole } from '../../../lib/abilities/legendGift.js';
 import { LogPrefix } from '../../../lib/utils/logPrefix.js';
-import { ensureFullMember } from '../../../lib/utils.js';
 
 @ApplyOptions<Listener.Options>({ event: Events.GuildMemberUpdate })
 export class PremiumUnsubscribe extends Listener<typeof Events.GuildMemberUpdate> {
-	public override async run(oldMember: GuildMember, newMember: GuildMember) {
-		await ensureFullMember(oldMember);
-		await ensureFullMember(newMember);
+	public override async run(oldMember: GuildMember | PartialGuildMember, newMember: GuildMember): Promise<void> {
+		// An uncached member arrives without its previous roles, so there is nothing to compare against.
+		// Fetching it would only return the current state. checkPremiumMemberAbilities reconciles these nightly.
+		if (oldMember.partial) {
+			return;
+		}
 
 		const oldMemberAbilities = new MemberAbilities(oldMember);
 		const newMemberAbilities = new MemberAbilities(newMember);

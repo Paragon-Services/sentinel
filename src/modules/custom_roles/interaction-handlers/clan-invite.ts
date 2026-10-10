@@ -110,7 +110,9 @@ export class ClanInvite extends InteractionHandler {
 				),
 			);
 
-		await (await clanManager.getClanChannel())
+		await (
+			await clanManager.getClanChannel()
+		)
 			?.send(
 				`<@${data.invitedUser}> has joined the clan! ${welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)]}`,
 			)

@@ -30,20 +30,20 @@ cache that ban sync and role sync read from.
 
 Consumers:
 
--   `src/listeners/banSync/checkBanOnJoin.ts` (add)
--   `src/listeners/banSync/loadBansOnReady.ts` (startup member fetch)
--   `src/listeners/roleSync/syncRolesOnJoin.ts` (add, dormant, see below)
--   `src/listeners/roleSync/syncRoleChanges.ts` (update, dormant, see below)
--   `src/listeners/roleSync/syncRolesOnReady.ts` (startup member fetch, dormant, see below)
--   `src/modules/custom_roles/listeners/premiumSubscribe.ts` (update, regain path)
--   `src/modules/custom_roles/listeners/premiumUnsubscribe.ts` (update, revoke path)
--   `src/modules/custom_roles/listeners/premiumMemberComesBack.ts` (add)
--   `src/modules/custom_roles/listeners/premiumMemberRemove.ts` (remove)
--   `src/modules/custom_roles/listeners/restoreGiftedRoleOnJoin.ts` (add)
--   `src/modules/visible_rank_roles/listeners/syncRankRolesOnMembers.ts` (update)
--   `src/modules/notifications/listeners/notificationRoleAdd.ts` (update)
--   `src/listeners/clientReady.ts` (startup member fetch)
--   `src/tasks/checkPremiumMemberAbilities.ts` (nightly reconciliation member fetch)
+- `src/listeners/banSync/checkBanOnJoin.ts` (add)
+- `src/listeners/banSync/loadBansOnReady.ts` (startup member fetch)
+- `src/listeners/roleSync/syncRolesOnJoin.ts` (add, dormant, see below)
+- `src/listeners/roleSync/syncRoleChanges.ts` (update, dormant, see below)
+- `src/listeners/roleSync/syncRolesOnReady.ts` (startup member fetch, dormant, see below)
+- `src/modules/custom_roles/listeners/premiumSubscribe.ts` (update, regain path)
+- `src/modules/custom_roles/listeners/premiumUnsubscribe.ts` (update, revoke path)
+- `src/modules/custom_roles/listeners/premiumMemberComesBack.ts` (add)
+- `src/modules/custom_roles/listeners/premiumMemberRemove.ts` (remove)
+- `src/modules/custom_roles/listeners/restoreGiftedRoleOnJoin.ts` (add)
+- `src/modules/visible_rank_roles/listeners/syncRankRolesOnMembers.ts` (update)
+- `src/modules/notifications/listeners/notificationRoleAdd.ts` (update)
+- `src/listeners/clientReady.ts` (startup member fetch)
+- `src/tasks/checkPremiumMemberAbilities.ts` (nightly reconciliation member fetch)
 
 Re-check with:
 
